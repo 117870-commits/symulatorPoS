@@ -1,0 +1,270 @@
+<!doctype html><html lang="pl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Symulator PoS — obsługa transakcji</title><style>body{margin:0;background:#f3f3f3;color:#111;font-family:Arial,sans-serif}main,nav{box-sizing:border-box;width:calc(100% - 32px);max-width:936px}main{margin:30px auto;background:white;padding:40px clamp(20px,5vw,58px);font-size:16px;line-height:1.5}h1{font-size:30px;line-height:1.2;margin:0 0 28px}h2{font-size:23px;margin:34px 0 12px}h3{font-size:19px;margin:24px 0 10px}p{margin:10px 0}li{margin:6px 0}.check-item{list-style:none;margin-left:-20px}.progress-note{display:inline-block;min-width:190px;max-width:100%;min-height:24px;overflow-wrap:anywhere;border-bottom:1px solid #999;background:#fff9e8;padding:2px 5px}.progress-note:focus{outline:2px solid #67809b}table{border-collapse:collapse;width:100%;margin:20px 0;font-size:14px}th,td{border:1px solid #d9d9d9;padding:10px;text-align:left;vertical-align:middle;overflow-wrap:anywhere}th{background:#e7eef3}code{font-family:Consolas,monospace;font-size:.92em}pre{padding:14px;background:#f5f5f5;font-family:Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px}nav{margin:20px auto;padding:14px clamp(20px,5vw,58px);background:#fff}button{font:inherit;padding:10px 16px;cursor:pointer;border:1px solid #999;border-radius:4px;background:#fff}nav p{font-size:14px}nav a{display:inline-block;margin:12px 18px 0 0;color:#244864}@media print{nav{display:none}body{background:white}main{margin:0;padding:0;width:100%}h2,h3{break-after:avoid}tr{break-inside:avoid}.progress-note{background:white;border:0}}.check-toggle{display:inline-block;cursor:pointer;font-size:20px;line-height:1;vertical-align:middle;padding:2px 4px}.check-toggle:focus{outline:2px solid #67809b}</style><nav><button onclick="selectDocument()">Zaznacz dokument do skopiowania</button><p id="status">Klikamy przycisk, naciskamy Ctrl+C, a potem Ctrl+V w Google Docs. Kopiujemy treść z tabelami i nagłówkami.</p><a href="#stan-pracy">Stan pracy i notatki</a><p>Klikamy pola, aby odhaczać działania lub wpisywać postęp. Odhaczenia i notatki zachowujemy w tej przeglądarce; plik Markdown uzupełniamy osobno.</p></nav><main id="document"><h1 id="symulator-pos-obs-uga-transakcji">Symulator PoS — obsługa transakcji</h1>
+<p>Tworzymy projekt w parze na przedmiot Podstawy informatyki. Program piszemy w C++. Ten dokument opisuje zasady, których trzymamy się podczas pracy.</p>
+<h2 id="1-1-co-budujemy-i-jak-dzia-a-symulacja">1.1. Co budujemy i jak działa symulacja</h2>
+<p>Budujemy symulator obsługi transakcji w czasie dyskretnym. Czas liczymy jako kolejne kroki: 0, 1, 2, 3… Jeden krok jest umowną jednostką czasu. Program nie musi czekać rzeczywistej sekundy między krokami.</p>
+<p><strong>Transakcja</strong> jest zgłoszeniem do wykonania. Ma czas nadejścia, czas wykonania, opłatę i termin zakończenia. <strong>Kolejka</strong> przechowuje transakcje, które już nadeszły i czekają na obsługę. <strong>Walidator</strong> jest wykonawcą: obsługuje jedną transakcję naraz, a po jej zakończeniu może dostać kolejną.</p>
+<p>Korzystamy z uproszczonego pomysłu Proof of Stake (PoS): liczba monet walidatora wpływa na jego szansę wyboru. Nasz program symuluje kolejkę i przydział pracy. Nie implementujemy pełnego blockchaina, bloków, kryptografii ani uzgadniania wspólnego stanu przez sieć.</p>
+<h3 id="wyb-r-transakcji">Wybór transakcji</h3>
+<p>Porównujemy dwie strategie na tych samych danych:</p>
+<table>
+<tr><th>Strategia</th><th>Którą oczekującą transakcję wybieramy</th></tr>
+<tr><td>FIFO</td><td>Tę, która najwcześniej nadeszła. Przy tym samym czasie nadejścia wybieramy niższe ID.</td></tr>
+<tr><td>FEE</td><td>Tę, która ma największą opłatę. Przy równych opłatach wybieramy wcześniejsze nadejście, a potem niższe ID.</td></tr>
+</table>
+<p>Opłata (<code>fee</code>) jest naszym priorytetem finansowym. Deadline służy do oceny terminowości, a nie do ustalania kolejności obsługi.</p>
+<h3 id="wyb-r-walidatora">Wybór walidatora</h3>
+<p>Po wybraniu transakcji losujemy wykonawcę spośród wolnych walidatorów. Szansa danego walidatora to jego stake podzielony przez sumę stake wszystkich aktualnie wolnych walidatorów.</p>
+<p>Przykład: jeśli wolni walidatorzy mają 10 i 30 monet, ich szanse wynoszą odpowiednio 25% i 75%. Zajętych walidatorów pomijamy. Jeśli żaden nie jest wolny, transakcja zostaje w kolejce.</p>
+<p><strong>Stake jest stały podczas przebiegu.</strong> Walidatorzy mogą mieć różne wartości, np. 10, 30 i 60 monet. Nie doliczamy nagród i nie odejmujemy monet. Wszyscy wykonują zadania z taką samą szybkością, więc większy stake nie skraca czasu wykonania transakcji. Nie dzielimy walidatorów na małe, średnie i duże serwery.</p>
+<h3 id="kolejno-dzia-a-w-jednym-przebiegu">Kolejność działań w jednym przebiegu</h3>
+<ol>
+<li>Ustawiamy czas <code>t = 0</code>, pustą kolejkę i wszystkich walidatorów jako wolnych.</li>
+<li>Dodajemy do kolejki transakcje, których czas nadejścia wynosi <code>t</code>.</li>
+<li>Przydzielamy transakcje według wybranej strategii, dopóki kolejka nie jest pusta i mamy wolnych walidatorów. Czas zakończenia zadania obliczamy jako <code>start + czas wykonania</code>.</li>
+<li>Sprawdzamy, czy zostały przyszłe nadejścia, transakcje w kolejce lub zajęci walidatorzy. Jeśli nic nie zostało, kończymy przebieg.</li>
+<li>Jeśli praca została, zwiększamy <code>t</code> o 1. Kończymy zadania, których czas zakończenia jest równy nowemu <code>t</code>: zapisujemy wyniki i zwalniamy walidatorów. Wracamy do kroku 2.</li>
+</ol>
+<p>Przykład: transakcja zaczyna się w czasie 0 i trwa 3 kroki. Kończy się w czasie 3. W tym samym kroku zwolniony walidator może rozpocząć kolejną transakcję.</p>
+<h3 id="pozosta-e-zasady">Pozostałe zasady</h3>
+<ul>
+<li>Wczytanie transakcji z pliku nie oznacza jej nadejścia. Dodajemy ją do kolejki dopiero w zapisanym czasie nadejścia.</li>
+<li>Rozpoczętej transakcji nie przerywamy, nawet jeśli później nadejdzie transakcja z większym fee.</li>
+<li>Spóźnione transakcje wykonujemy do końca. Zakończenie dokładnie w deadline oznacza wykonanie w terminie.</li>
+<li>Dla każdego przebiegu tworzymy nowy obiekt Symulator: z czasem 0, pustą kolejką, pustymi wynikami i wolnymi walidatorami. Dla FIFO i FEE przygotowujemy tę samą listę N losowań z zakresu [0, 1), gdzie N jest liczbą transakcji. Zużywamy jedno losowanie na kolejny przydział. Wolnych walidatorów rozpatrujemy według ID.</li>
+<li>Ta sama strategia, te same dane i to samo ziarno losowania mają dawać powtarzalne wyniki w naszym programie. FIFO i FEE mogą dawać różne wyniki, mimo wspólnej listy losowań.</li>
+</ul>
+<h2 id="1-2-dane-i-klasy">1.2. Dane i klasy</h2>
+<h3 id="dane-transakcji">Dane transakcji</h3>
+<table>
+<tr><th>Pole</th><th>Znaczenie</th><th>Zasada</th></tr>
+<tr><td><code>id</code></td><td>Numer transakcji</td><td>Dodatni i niepowtarzalny wśród transakcji</td></tr>
+<tr><td><code>nadejscie</code></td><td>Krok, w którym transakcja trafia do kolejki</td><td>Co najmniej 0</td></tr>
+<tr><td><code>czasWykonania</code></td><td>Liczba kroków potrzebnych do wykonania</td><td>Większa od 0</td></tr>
+<tr><td><code>fee</code></td><td>Opłata określająca priorytet w FEE</td><td>Co najmniej 0</td></tr>
+<tr><td><code>deadline</code></td><td>Najpóźniejszy termin zakończenia bez spóźnienia</td><td>Nie wcześniejszy niż nadejście</td></tr>
+</table>
+<p>Na początku używamy całkowitych wartości czasu i opłat. Deadline może być za krótki, by zdążyć z wykonaniem. Taka transakcja jest poprawnym wejściem i może zakończyć się jako spóźniona.</p>
+<h3 id="dane-walidatora">Dane walidatora</h3>
+<table>
+<tr><th>Pole</th><th>Znaczenie</th></tr>
+<tr><td><code>id</code></td><td>Dodatni, niepowtarzalny numer walidatora</td></tr>
+<tr><td><code>stake</code></td><td>Dodatnia liczba monet, stała podczas przebiegu</td></tr>
+<tr><td><code>zajety</code></td><td>Czy walidator teraz wykonuje zadanie: true albo false</td></tr>
+<tr><td><code>aktualna</code></td><td>Dane wykonywanej transakcji; korzystamy z nich tylko przy zajętym walidatorze</td></tr>
+<tr><td><code>start</code></td><td>Czas rozpoczęcia aktualnego zadania</td></tr>
+<tr><td><code>koniec</code></td><td>Czas zakończenia aktualnego zadania</td></tr>
+</table>
+<p>Walidator zaczyna jako wolny. Metoda rozpocznij ustawia zadanie i czasy, a zakoncz tworzy wynik i zwalnia wykonawcę. Pola pracy są prywatne, więc inne części programu zmieniają stan przez te metody. Numer transakcji i numer walidatora mogą być takie same, bo dotyczą różnych rodzajów danych.</p>
+<h3 id="prosta-architektura">Prosta architektura</h3>
+<table>
+<tr><th>Element</th><th>Zadanie</th><th>Pliki</th></tr>
+<tr><td><code>Dane</code></td><td>Definiujemy rekordy Transakcja, DaneWalidatora, Konfiguracja, WynikTransakcji, Podsumowanie i wyliczenie Strategia</td><td>Dane.hpp</td></tr>
+<tr><td><code>Walidator</code></td><td>Przechowujemy stan wykonawcy i obsługujemy rozpoczęcie oraz zakończenie zadania</td><td>Walidator.hpp i Walidator.cpp</td></tr>
+<tr><td><code>Symulator</code></td><td>Prowadzimy czas, obie kolejki, losowanie wykonawcy i zbieranie wyników</td><td>Symulator.hpp i Symulator.cpp</td></tr>
+<tr><td><code>Statystyki</code></td><td>Liczymy średnie i maksymalne oczekiwanie, terminowość oraz wykorzystanie walidatorów</td><td>Statystyki.hpp i Statystyki.cpp</td></tr>
+<tr><td><code>Pliki</code></td><td>Wczytujemy, sprawdzamy i zapisujemy pliki tekstowe</td><td>Pliki.hpp i Pliki.cpp</td></tr>
+<tr><td><code>main</code></td><td>Łączymy części programu, przygotowujemy wspólne losowania i uruchamiamy dwa osobne przebiegi</td><td>main.cpp</td></tr>
+</table>
+<p>Tworzymy cztery klasy i jeden wspólny nagłówek danych. Transakcja jest prostym rekordem, dlatego nie potrzebuje osobnego Transakcja.cpp. Nie używamy dziedziczenia ani ręcznego przydzielania pamięci. Wyjaśnienia trzymamy w planie; przykłady kodu nie zawierają komentarzy.</p>
+<p>Transakcje, walidatorów, losowania i wyniki przechowujemy w std::vector. FIFO obsługujemy przez std::queue, a FEE przez std::priority_queue z własnym komparatorem PorownajFee. Przed symulacją sortujemy transakcje po nadejściu i ID, a początkowe dane walidatorów po ID.</p>
+<h2 id="1-3-pliki-wej-ciowe">1.3. Pliki wejściowe</h2>
+<p>Przygotowujemy <code>konfiguracja.txt</code> i <code>zgloszenia.txt</code>. Zapisujemy liczby oddzielone spacjami, bez nagłówków i komentarzy. Na początek używamy jednego walidatora i trzech transakcji, żeby łatwo sprawdzić kolejność obsługi.</p>
+<h3 id="konfiguracja-txt">konfiguracja.txt</h3>
+<p>Pierwszy wiersz zawiera <code>liczbaWalidatorow ziarnoLosowania</code>. Każdy następny wiersz opisuje jednego walidatora: <code>id stake</code>.</p>
+<pre>1 12345
+1 10</pre>
+<p>Mamy jednego walidatora, ziarno 12345 i walidatora o ID 1 ze stake 10. Ziarno jest nieujemną liczbą całkowitą, od której zaczynamy generowanie losowań. Liczba walidatorów musi wynosić co najmniej 1.</p>
+<h3 id="zgloszenia-txt">zgloszenia.txt</h3>
+<p>Pierwszy wiersz zawiera liczbę transakcji. Każdy następny wiersz ma pięć kolumn: <code>id nadejscie czasWykonania fee deadline</code>.</p>
+<pre>3
+1 0 2 1 10
+2 0 2 9 10
+3 0 2 4 10</pre>
+<p>Wszystkie trzy transakcje nadchodzą w czasie 0, trwają po 2 kroki i mają deadline 10. Ich opłaty wynoszą 1, 9 i 4. Liczba transakcji może wynosić 0; wtedy plik zawiera tylko pierwszy wiersz z zerem.</p>
+<h3 id="sprawdzanie-wej-cia">Sprawdzanie wejścia</h3>
+<p>Odrzucamy brak pliku, dane inne niż oczekiwane liczby całkowite, niewłaściwą liczbę kolumn i liczbę rekordów niezgodną z pierwszym wierszem. Sprawdzamy też ograniczenia z tabel: poprawne ID, dodatni stake i czas wykonania, nieujemne nadejście i fee oraz deadline nie wcześniejszy od nadejścia. W razie błędu podajemy nazwę pliku i przyczynę; nie uruchamiamy symulacji na częściowo wczytanych danych.</p>
+<h3 id="planowany-zapis-wynik-w">Planowany zapis wyników</h3>
+<p>Każda strategia zapisuje osobny plik: <code>wyniki_fifo.txt</code> lub <code>wyniki_fee.txt</code>. W wierszu wyniku umieszczamy ID transakcji, ID walidatora, nadejście, start, koniec, oczekiwanie, deadline, opóźnienie i terminowość. Na końcu dodajemy podsumowanie przebiegu. Zapis wyników implementujemy w etapie 2, a pełne statystyki w etapie 5.</p>
+<h2 id="stan-pracy">Stan pracy</h2>
+<p>Przechodzimy przez te same sześć etapów co na tablicy 03 / Plan pracy w Figmie. Odhaczamy działania po sprawdzeniu wyniku. Pod każdym etapem zapisujemy, co rzeczywiście zrobiliśmy, w których plikach i jaki był wynik testu. Pola poniżej uzupełniamy w tym dokumencie albo po wklejeniu do Google Docs.</p>
+<p>Mamy już opis, pliki wejściowe i przykład w oczekiwane_wyniki.txt. Poniższa lista służy do naszego dalszego sprawdzania i notowania postępów; same przygotowane dokumenty nie oznaczają, że program został napisany.</p>
+<h3 id="etap-1-ustalamy-zasady">Etap 1. Ustalamy zasady</h3>
+<p>Co robimy:</p>
+<ul>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-1" aria-checked="false" aria-label="Piszemy cel projektu i zasady FIFO/FEE w opis_projektu.md.">☐</span> Piszemy cel projektu i zasady FIFO/FEE w opis_projektu.md.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-2" aria-checked="false" aria-label="Opisujemy pola transakcji i walidatora oraz zadania klas.">☐</span> Opisujemy pola transakcji i walidatora oraz zadania klas.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-3" aria-checked="false" aria-label="Tworzymy konfiguracja.txt i zgloszenia.txt; opisujemy kolumny.">☐</span> Tworzymy konfiguracja.txt i zgloszenia.txt; opisujemy kolumny.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-4" aria-checked="false" aria-label="Liczymy 3 transakcje: kolejność, start, koniec i oczekiwanie.">☐</span> Liczymy 3 transakcje: kolejność, start, koniec i oczekiwanie.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-5" aria-checked="false" aria-label="Sprawdzamy zasady razem; uzgadniamy format danych i metody.">☐</span> Sprawdzamy zasady razem; uzgadniamy format danych i metody.</li>
+</ul>
+<p>Na koniec etapu:</p>
+<ul>
+<li>opis_projektu.md: cel, reguły, pola i zadania klas.</li>
+<li>konfiguracja.txt: liczba walidatorów, seed; potem ID i stake.</li>
+<li>zgloszenia.txt: liczba transakcji; potem ID, nadejście,</li>
+<li>czas wykonania, fee i deadline.</li>
+<li>oczekiwane_wyniki.txt: obliczenia FIFO i FEE;</li>
+<li>start, koniec, oczekiwanie oraz kolejność.</li>
+<li>Test: potrafimy odtworzyć ten sam przykład.</li>
+</ul>
+<p>Nasz zapis postępu:</p>
+<ul>
+<li>Status (niezaczęty / w trakcie / zakończony): <span class="progress-note" contenteditable="true" data-note="note-1" aria-label="Status (niezaczęty / w trakcie / zakończony):">................................</span></li>
+<li>Data aktualizacji: <span class="progress-note" contenteditable="true" data-note="note-2" aria-label="Data aktualizacji:">................................</span></li>
+<li>Co zostało zrobione: <span class="progress-note" contenteditable="true" data-note="note-3" aria-label="Co zostało zrobione:">................................</span></li>
+<li>Utworzone lub zmienione pliki i ich zawartość: <span class="progress-note" contenteditable="true" data-note="note-4" aria-label="Utworzone lub zmienione pliki i ich zawartość:">................................</span></li>
+<li>Sprawdzony przykład lub test: <span class="progress-note" contenteditable="true" data-note="note-5" aria-label="Sprawdzony przykład lub test:">................................</span></li>
+<li>Oczekiwany wynik i otrzymany wynik: <span class="progress-note" contenteditable="true" data-note="note-6" aria-label="Oczekiwany wynik i otrzymany wynik:">................................</span></li>
+<li>Co wymaga poprawy: <span class="progress-note" contenteditable="true" data-note="note-7" aria-label="Co wymaga poprawy:">................................</span></li>
+<li>Następny krok: <span class="progress-note" contenteditable="true" data-note="note-8" aria-label="Następny krok:">................................</span></li>
+</ul>
+<h3 id="etap-2-uruchamiamy-fifo">Etap 2. Uruchamiamy FIFO</h3>
+<p>Co robimy:</p>
+<ul>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-6" aria-checked="false" aria-label="Kompilujemy main.cpp; zapisujemy uruchomienie w README.md.">☐</span> Kompilujemy main.cpp; zapisujemy uruchomienie w README.md.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-7" aria-checked="false" aria-label="Tworzymy 8 plików kodu; wczytujemy dane do std::vector.">☐</span> Tworzymy 8 plików kodu; wczytujemy dane do std::vector.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-8" aria-checked="false" aria-label="Sprawdzamy dane; sortujemy po nadejściu i ID.">☐</span> Sprawdzamy dane; sortujemy po nadejściu i ID.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-9" aria-checked="false" aria-label="Dodajemy FIFO, czas i wybór pierwszego wolnego walidatora.">☐</span> Dodajemy FIFO, czas i wybór pierwszego wolnego walidatora.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-10" aria-checked="false" aria-label="Zapisujemy wyniki FIFO; sprawdzamy przykład i puste wejście.">☐</span> Zapisujemy wyniki FIFO; sprawdzamy przykład i puste wejście.</li>
+</ul>
+<p>Na koniec etapu:</p>
+<ul>
+<li>Kod: main.cpp, Dane.hpp, Walidator, Pliki i Symulator.</li>
+<li>Instrukcja pisania: etap 2 planu, po 1–6 linii kodu.</li>
+<li>README.md: kompilacja, uruchomienie i pliki wejścia.</li>
+<li>wyniki_fifo.txt: rekord każdej zakończonej transakcji.</li>
+<li>Test: nadejście 0 i czas 3 dają start 0, koniec 3.</li>
+<li>Dla 3 transakcji mamy 3 wyniki bez powtórzeń.</li>
+<li>Błędne wejście daje komunikat z przyczyną.</li>
+</ul>
+<p>Nasz zapis postępu:</p>
+<ul>
+<li>Status (niezaczęty / w trakcie / zakończony): <span class="progress-note" contenteditable="true" data-note="note-9" aria-label="Status (niezaczęty / w trakcie / zakończony):">................................</span></li>
+<li>Data aktualizacji: <span class="progress-note" contenteditable="true" data-note="note-10" aria-label="Data aktualizacji:">................................</span></li>
+<li>Co zostało zrobione: <span class="progress-note" contenteditable="true" data-note="note-11" aria-label="Co zostało zrobione:">................................</span></li>
+<li>Utworzone lub zmienione pliki i ich zawartość: <span class="progress-note" contenteditable="true" data-note="note-12" aria-label="Utworzone lub zmienione pliki i ich zawartość:">................................</span></li>
+<li>Sprawdzony przykład lub test: <span class="progress-note" contenteditable="true" data-note="note-13" aria-label="Sprawdzony przykład lub test:">................................</span></li>
+<li>Oczekiwany wynik i otrzymany wynik: <span class="progress-note" contenteditable="true" data-note="note-14" aria-label="Oczekiwany wynik i otrzymany wynik:">................................</span></li>
+<li>Co wymaga poprawy: <span class="progress-note" contenteditable="true" data-note="note-15" aria-label="Co wymaga poprawy:">................................</span></li>
+<li>Następny krok: <span class="progress-note" contenteditable="true" data-note="note-16" aria-label="Następny krok:">................................</span></li>
+</ul>
+<h3 id="etap-3-dodajemy-fee-i-stake">Etap 3. Dodajemy FEE i stake</h3>
+<p>Co robimy:</p>
+<ul>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-11" aria-checked="false" aria-label="Rozbudowujemy kod z etapu 2 według punktów 3.1–3.5 planu; dodajemy Strategia { FIFO, FEE }.">☐</span> Rozbudowujemy kod z etapu 2 według punktów 3.1–3.5 planu; dodajemy Strategia { FIFO, FEE }.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-12" aria-checked="false" aria-label="W FEE używamy priority_queue: fee, nadejście, potem ID.">☐</span> W FEE używamy priority_queue: fee, nadejście, potem ID.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-13" aria-checked="false" aria-label="Losujemy tylko wolnych walidatorów według ich stake.">☐</span> Losujemy tylko wolnych walidatorów według ich stake.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-14" aria-checked="false" aria-label="Generujemy N losowań z seed; każdy przebieg ma świeży stan.">☐</span> Generujemy N losowań z seed; każdy przebieg ma świeży stan.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-15" aria-checked="false" aria-label="Uruchamiamy oba warianty; sprawdzamy remisy i powtarzalność.">☐</span> Uruchamiamy oba warianty; sprawdzamy remisy i powtarzalność.</li>
+</ul>
+<p>Na koniec etapu:</p>
+<ul>
+<li>wyniki_fifo.txt i wyniki_fee.txt: po jednym wyniku</li>
+<li>dla każdej transakcji, bez powtórzeń.</li>
+<li>Test FEE: opłaty 1, 9, 4 dają kolejność T2, T3, T1.</li>
+<li>Remis: wcześniejsze nadejście, potem niższe ID.</li>
+<li>Ten sam wariant, dane i seed dają ten sam wynik.</li>
+<li>Zajęty walidator nie bierze udziału w losowaniu.</li>
+<li>FIFO i FEE używają wspólnej listy losowań.</li>
+</ul>
+<p>Nasz zapis postępu:</p>
+<ul>
+<li>Status (niezaczęty / w trakcie / zakończony): <span class="progress-note" contenteditable="true" data-note="note-17" aria-label="Status (niezaczęty / w trakcie / zakończony):">................................</span></li>
+<li>Data aktualizacji: <span class="progress-note" contenteditable="true" data-note="note-18" aria-label="Data aktualizacji:">................................</span></li>
+<li>Co zostało zrobione: <span class="progress-note" contenteditable="true" data-note="note-19" aria-label="Co zostało zrobione:">................................</span></li>
+<li>Utworzone lub zmienione pliki i ich zawartość: <span class="progress-note" contenteditable="true" data-note="note-20" aria-label="Utworzone lub zmienione pliki i ich zawartość:">................................</span></li>
+<li>Sprawdzony przykład lub test: <span class="progress-note" contenteditable="true" data-note="note-21" aria-label="Sprawdzony przykład lub test:">................................</span></li>
+<li>Oczekiwany wynik i otrzymany wynik: <span class="progress-note" contenteditable="true" data-note="note-22" aria-label="Oczekiwany wynik i otrzymany wynik:">................................</span></li>
+<li>Co wymaga poprawy: <span class="progress-note" contenteditable="true" data-note="note-23" aria-label="Co wymaga poprawy:">................................</span></li>
+<li>Następny krok: <span class="progress-note" contenteditable="true" data-note="note-24" aria-label="Następny krok:">................................</span></li>
+</ul>
+<h3 id="etap-4-liczymy-z-o-ono">Etap 4. Liczymy złożoność</h3>
+<p>Co robimy:</p>
+<ul>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-16" aria-checked="false" aria-label="Definiujemy N: transakcje, K: walidatorzy, T: kroki czasu.">☐</span> Definiujemy N: transakcje, K: walidatorzy, T: kroki czasu.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-17" aria-checked="false" aria-label="Porównujemy dodanie, pobranie i podgląd w FIFO oraz FEE.">☐</span> Porównujemy dodanie, pobranie i podgląd w FIFO oraz FEE.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-18" aria-checked="false" aria-label="Liczymy sortowanie, skan walidatorów i wybór wykonawcy.">☐</span> Liczymy sortowanie, skan walidatorów i wybór wykonawcy.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-19" aria-checked="false" aria-label="Zapisujemy koszt całej symulacji i pamięci w zlozonosc.md.">☐</span> Zapisujemy koszt całej symulacji i pamięci w zlozonosc.md.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-20" aria-checked="false" aria-label="Opisujemy długie oczekiwanie niskiego fee i puste kroki czasu.">☐</span> Opisujemy długie oczekiwanie niskiego fee i puste kroki czasu.</li>
+</ul>
+<p>Na koniec etapu:</p>
+<ul>
+<li>zlozonosc.md: znaczenie N, K i T oraz tabela kolejek.</li>
+<li>FIFO: dodanie i pobranie O(1); FEE: O(log N).</li>
+<li>Sortowanie: O(N log N + K log K); kroki czasu: O(TK).</li>
+<li>Przydziały i wykorzystanie: O(NK); pamięć: O(N + K).</li>
+<li>Całość: O(N log(N+1) + K log(K+1) + TK + NK).</li>
+<li>Sprawdzamy: wskazujemy w kodzie źródło każdego kosztu.</li>
+</ul>
+<p>Nasz zapis postępu:</p>
+<ul>
+<li>Status (niezaczęty / w trakcie / zakończony): <span class="progress-note" contenteditable="true" data-note="note-25" aria-label="Status (niezaczęty / w trakcie / zakończony):">................................</span></li>
+<li>Data aktualizacji: <span class="progress-note" contenteditable="true" data-note="note-26" aria-label="Data aktualizacji:">................................</span></li>
+<li>Co zostało zrobione: <span class="progress-note" contenteditable="true" data-note="note-27" aria-label="Co zostało zrobione:">................................</span></li>
+<li>Utworzone lub zmienione pliki i ich zawartość: <span class="progress-note" contenteditable="true" data-note="note-28" aria-label="Utworzone lub zmienione pliki i ich zawartość:">................................</span></li>
+<li>Sprawdzony przykład lub test: <span class="progress-note" contenteditable="true" data-note="note-29" aria-label="Sprawdzony przykład lub test:">................................</span></li>
+<li>Oczekiwany wynik i otrzymany wynik: <span class="progress-note" contenteditable="true" data-note="note-30" aria-label="Oczekiwany wynik i otrzymany wynik:">................................</span></li>
+<li>Co wymaga poprawy: <span class="progress-note" contenteditable="true" data-note="note-31" aria-label="Co wymaga poprawy:">................................</span></li>
+<li>Następny krok: <span class="progress-note" contenteditable="true" data-note="note-32" aria-label="Następny krok:">................................</span></li>
+</ul>
+<h3 id="etap-5-badamy-wyniki">Etap 5. Badamy wyniki</h3>
+<p>Co robimy:</p>
+<ul>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-21" aria-checked="false" aria-label="Dodajemy Podsumowanie oraz Statystyki.hpp/.cpp.">☐</span> Dodajemy Podsumowanie oraz Statystyki.hpp/.cpp.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-22" aria-checked="false" aria-label="Sprawdzamy średnią, maksimum, deadline i wykorzystanie.">☐</span> Sprawdzamy średnią, maksimum, deadline i wykorzystanie.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-23" aria-checked="false" aria-label="Tworzymy 3 scenariusze: mały, przeciążony i nagły napływ.">☐</span> Tworzymy 3 scenariusze: mały, przeciążony i nagły napływ.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-24" aria-checked="false" aria-label="Badamy FIFO i FEE z seed 11, 22 i 33: 18 przebiegów.">☐</span> Badamy FIFO i FEE z seed 11, 22 i 33: 18 przebiegów.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-25" aria-checked="false" aria-label="Robimy porownanie.csv, 2 wykresy i sprawozdanie.pdf.">☐</span> Robimy porownanie.csv, 2 wykresy i sprawozdanie.pdf.</li>
+</ul>
+<p>Na koniec etapu:</p>
+<ul>
+<li>Kod: Statystyki; podsumowanie w Pliki i main.</li>
+<li>Instrukcja dodania kodu: punkt 5.1 planu.</li>
+<li>Dane: male_obciazenie.txt, przeciazenie.txt, nagly_naplyw.txt.</li>
+<li>porownanie.csv: scenariusz, strategia, seed i pomiary.</li>
+<li>Wykresy: średnie oczekiwanie i odsetek terminowych.</li>
+<li>sprawozdanie.pdf: cel, klasy, złożoność, wyniki i wnioski.</li>
+<li>Test: średnia 2, maksimum 4; puste wejście daje zera.</li>
+</ul>
+<p>Nasz zapis postępu:</p>
+<ul>
+<li>Status (niezaczęty / w trakcie / zakończony): <span class="progress-note" contenteditable="true" data-note="note-33" aria-label="Status (niezaczęty / w trakcie / zakończony):">................................</span></li>
+<li>Data aktualizacji: <span class="progress-note" contenteditable="true" data-note="note-34" aria-label="Data aktualizacji:">................................</span></li>
+<li>Co zostało zrobione: <span class="progress-note" contenteditable="true" data-note="note-35" aria-label="Co zostało zrobione:">................................</span></li>
+<li>Utworzone lub zmienione pliki i ich zawartość: <span class="progress-note" contenteditable="true" data-note="note-36" aria-label="Utworzone lub zmienione pliki i ich zawartość:">................................</span></li>
+<li>Sprawdzony przykład lub test: <span class="progress-note" contenteditable="true" data-note="note-37" aria-label="Sprawdzony przykład lub test:">................................</span></li>
+<li>Oczekiwany wynik i otrzymany wynik: <span class="progress-note" contenteditable="true" data-note="note-38" aria-label="Oczekiwany wynik i otrzymany wynik:">................................</span></li>
+<li>Co wymaga poprawy: <span class="progress-note" contenteditable="true" data-note="note-39" aria-label="Co wymaga poprawy:">................................</span></li>
+<li>Następny krok: <span class="progress-note" contenteditable="true" data-note="note-40" aria-label="Następny krok:">................................</span></li>
+</ul>
+<h3 id="etap-6-przygotowujemy-obron">Etap 6. Przygotowujemy obronę</h3>
+<p>Co robimy:</p>
+<ul>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-26" aria-checked="false" aria-label="Zbieramy kod, dane, README.md i raport w jednym folderze.">☐</span> Zbieramy kod, dane, README.md i raport w jednym folderze.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-27" aria-checked="false" aria-label="W pokaz.md zapisujemy kolejność prezentacji i przykłady.">☐</span> W pokaz.md zapisujemy kolejność prezentacji i przykłady.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-28" aria-checked="false" aria-label="Ćwiczymy wyjaśnianie klas, kolejek, stake i statystyk.">☐</span> Ćwiczymy wyjaśnianie klas, kolejek, stake i statystyk.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-29" aria-checked="false" aria-label="Sprawdzamy 7 efektów; wskazujemy plik albo część pokazu.">☐</span> Sprawdzamy 7 efektów; wskazujemy plik albo część pokazu.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-30" aria-checked="false" aria-label="Uruchamiamy projekt z folderu do oddania; robimy kopię.">☐</span> Uruchamiamy projekt z folderu do oddania; robimy kopię.</li>
+</ul>
+<p>Na koniec etapu:</p>
+<ul>
+<li>Folder do oddania: kod .hpp/.cpp, dane, README.md</li>
+<li>i sprawozdanie.pdf; dołączamy wyniki eksperymentów.</li>
+<li>pokaz.md: mały przykład, większy test, wyniki i kod.</li>
+<li>opis_projektu.md: lista 7 efektów i miejsce ich spełnienia.</li>
+<li>Test: oboje kompilujemy, uruchamiamy i wyjaśniamy kod.</li>
+<li>Próba: pokaz 5–7 minut, jeśli prowadzący nie podał czasu.</li>
+<li>Na koniec zapisujemy kopię całego folderu.</li>
+</ul>
+<p>Nasz zapis postępu:</p>
+<ul>
+<li>Status (niezaczęty / w trakcie / zakończony): <span class="progress-note" contenteditable="true" data-note="note-41" aria-label="Status (niezaczęty / w trakcie / zakończony):">................................</span></li>
+<li>Data aktualizacji: <span class="progress-note" contenteditable="true" data-note="note-42" aria-label="Data aktualizacji:">................................</span></li>
+<li>Co zostało zrobione: <span class="progress-note" contenteditable="true" data-note="note-43" aria-label="Co zostało zrobione:">................................</span></li>
+<li>Utworzone lub zmienione pliki i ich zawartość: <span class="progress-note" contenteditable="true" data-note="note-44" aria-label="Utworzone lub zmienione pliki i ich zawartość:">................................</span></li>
+<li>Sprawdzony przykład lub test: <span class="progress-note" contenteditable="true" data-note="note-45" aria-label="Sprawdzony przykład lub test:">................................</span></li>
+<li>Oczekiwany wynik i otrzymany wynik: <span class="progress-note" contenteditable="true" data-note="note-46" aria-label="Oczekiwany wynik i otrzymany wynik:">................................</span></li>
+<li>Co wymaga poprawy: <span class="progress-note" contenteditable="true" data-note="note-47" aria-label="Co wymaga poprawy:">................................</span></li>
+<li>Następny krok: <span class="progress-note" contenteditable="true" data-note="note-48" aria-label="Następny krok:">................................</span></li>
+</ul>
+<p>Szczegółową instrukcję czytamy po kolei w PLAN_PROJEKTU_POS.md: podstawowy program w etapie 2, FEE i losowanie w etapie 3, statystyki w etapie 5. Kod dopisujemy krótkimi fragmentami, a po przystankach porównujemy wynik z przykładem.</p></main><script>function selectDocument(){const el=document.getElementById("document");const r=document.createRange();r.selectNodeContents(el);const s=window.getSelection();s.removeAllRanges();s.addRange(r);document.getElementById("status").innerText="Zaznaczono dokument. Naciskamy Ctrl+C, a potem Ctrl+V w Google Docs.";}const storageKey="pos-notatki-"+location.pathname;let saved={};try{saved=JSON.parse(localStorage.getItem(storageKey)||"{}");}catch(e){}document.querySelectorAll("[data-note]").forEach(el=>{if(Object.prototype.hasOwnProperty.call(saved,el.dataset.note))el.innerText=saved[el.dataset.note];el.addEventListener("focus",()=>{if(/^\.+$/.test(el.innerText.trim())){const r=document.createRange();r.selectNodeContents(el);const s=window.getSelection();s.removeAllRanges();s.addRange(r);}});el.addEventListener("input",()=>{saved[el.dataset.note]=el.innerText;try{localStorage.setItem(storageKey,JSON.stringify(saved));}catch(e){document.getElementById("status").innerText="Notatki są na stronie. Kopiujemy je do Google Docs, aby je zachować.";}});});document.querySelectorAll("[data-check]").forEach(el=>{const key=el.dataset.check;function render(value){el.setAttribute("aria-checked",String(value));el.innerText=value?"☑":"☐";}if(Object.prototype.hasOwnProperty.call(saved,key))render(saved[key]===true);function toggle(){const value=el.getAttribute("aria-checked")!=="true";render(value);saved[key]=value;try{localStorage.setItem(storageKey,JSON.stringify(saved));}catch(e){document.getElementById("status").innerText="Odhaczenia są na stronie. Kopiujemy je do Google Docs, aby je zachować.";}}el.addEventListener("click",toggle);el.addEventListener("keydown",e=>{if(e.key===" "||e.key==="Enter"){e.preventDefault();toggle();}});});</script></html>
