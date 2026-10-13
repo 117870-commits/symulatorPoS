@@ -34,7 +34,7 @@ Projekt docelowo korzysta ze standardu C++17. Instrukcję kompilacji i uruchomie
 
 1. Podział obowiązków
 
-Osoba A — dane, walidator i pliki
+## Osoba A — dane, walidator i pliki
 Odpowiedzialność za przygotowanie danych i ich poprawność
 Pliki:
 - Dane.hpp
@@ -53,7 +53,7 @@ Zadania:
 
 
 
-Osoba B — uruchomienie, symulator i FIFO
+## Osoba B — uruchomienie, symulator i FIFO
 Odpowiedzialność za przebieg symulacji i połączenie programu
 Pliki:
 - main.cpp
@@ -70,7 +70,7 @@ Zadania:
 
 
 
-Ten podział bazuje na klasach i kolejności prac z rozdziałów 2.2–2.5 planu. PLAN_PROJEKTU_POS.md
+## Ten podział bazuje na klasach i kolejności prac z rozdziałów 2.2–2.5 planu. PLAN_PROJEKTU_POS.md
  PLAN_PROJEKTU_POS.md
 
 2. Jak podzielić pracę, żeby nie blokować się nawzajem?
