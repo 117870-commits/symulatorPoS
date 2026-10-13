@@ -1,0 +1,25 @@
+# Pliki wykonywalne i obiekty C/C++
+*.exe
+*.out
+*.o
+*.obj
+*.a
+*.lib
+*.dll
+*.so
+*.dylib
+
+# Katalogi kompilacji
+/build/
+/bin/
+/Debug/
+/Release/
+/x64/
+
+# Ustawienia lokalnego edytora (nie ignorujemy wspólnego README)
+.vscode/
+.idea/
+
+# Pliki tymczasowe systemu
+.DS_Store
+Thumbs.db

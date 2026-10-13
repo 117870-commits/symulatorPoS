@@ -1,0 +1,18 @@
+OCZEKIWANE WYNIKI
+
+Jeden walidator. T1, T2 i T3 przychodzą w czasie 0.
+Każda trwa 2 kroki, deadline: 10. Fee: T1=1, T2=9, T3=4.
+
+FIFO (kolejność nadejścia, przy remisie niższe ID):
+T1: start 0, koniec 2, oczekiwanie 0
+T2: start 2, koniec 4, oczekiwanie 2
+T3: start 4, koniec 6, oczekiwanie 4
+
+FEE (najwyższa opłata jako pierwsza):
+T2: start 0, koniec 2, oczekiwanie 0
+T3: start 2, koniec 4, oczekiwanie 2
+T1: start 4, koniec 6, oczekiwanie 4
+
+Oczekiwanie = start - nadejście. Wykonanie trwa osobno 2 kroki.
+W obu strategiach: średnie oczekiwanie 2, maksymalne 4.
+Koniec w czasie 6, wykorzystanie walidatora 100% ( wykorzystanie = czas pracy / czas symulacji * 100% ), wszystkie 3 w terminie.
