@@ -1,7 +1,3 @@
-// main.cpp
-// Szkielet programu zgodny z planem w repozytorium (PLAN_PROJEKTU_POS.md, opis_projektu.md).
-// Nie implementuję logiki symulatora tutaj — najpierw dodaję plik główny, zgodnie z instrukcją.
-
 #include <iostream>
 
 int main() {
