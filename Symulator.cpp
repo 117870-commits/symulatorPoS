@@ -19,3 +19,18 @@ void Symulator::dodajNadejscia() {
 bool Symulator::kolejkaPusta() const {
     return fifo.empty();
 }
+
+Transakcja Symulator::pobierzTransakcje() {
+    Transakcja transakcja = fifo.front();
+    fifo.pop();
+    return transakcja;
+}
+
+int Symulator::wybierzWalidatora() const {
+    for (std::size_t i = 0; i < walidatorzy.size(); ++i) {
+        if (walidatorzy[i].czyWolny()) {
+            return static_cast<int>(i);
+        }
+    }
+    return -1;
+}
