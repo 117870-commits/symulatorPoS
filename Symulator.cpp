@@ -34,3 +34,24 @@ int Symulator::wybierzWalidatora() const {
     }
     return -1;
 }
+
+void Symulator::przydzielZadania() {
+    while (!kolejkaPusta()) {
+        int index = wybierzWalidatora();
+        if (index == -1) {
+            break;
+        }
+
+        Transakcja transakcja = pobierzTransakcje();
+        walidatorzy[index].rozpocznij(transakcja, czas);
+    }
+}
+
+void Symulator::sprawdzZakonczenia() {
+    for (Walidator& walidator : walidatorzy) {
+        if (walidator.czyKonczy(czas)) {
+            WynikTransakcji wynik = walidator.zakoncz();
+            wyniki.push_back(wynik);
+        }
+    }
+}
