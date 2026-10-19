@@ -1,14 +1,18 @@
-#include "Walidator.hpp"
+#include "Pliki.hpp"
+#include <exception>
 #include <iostream>
 
 int main() {
-    Walidator w(DaneWalidatora{1, 10});
-    Transakcja t{1, 0, 2, 1, 10};
-    w.rozpocznij(t, 0);
-
-    std::cout << w.czyWolny() << ' ' << w.czyKonczy(2) << '\n';
-
-    WynikTransakcji wynik = w.zakoncz();
-    std::cout << wynik.start << ' ' << wynik.koniec << ' ' << wynik.oczekiwanie << ' ' << w.czyWolny() << '\n';
-    return 0;
+    try {
+        Konfiguracja konfiguracja = Pliki::wczytajKonfiguracje("konfiguracja.txt");
+        std::vector<Transakcja> transakcje = Pliki::wczytajTransakcje("zgloszenia.txt");
+        std::cout << konfiguracja.walidatorzy.size() << ' ' << konfiguracja.ziarno << ' ' << transakcje.size() << '\n';
+        for (const Transakcja& t : transakcje) {
+            std::cout << t.id << ' ' << t.nadejscie << ' ' << t.czasWykonania << ' ' << t.fee << ' ' << t.deadline << '\n';
+        }
+        return 0;
+    } catch (const std::exception& blad) {
+        std::cerr << "Blad: " << blad.what() << '\n';
+        return 1;
+    }
 }
