@@ -7,3 +7,11 @@ Symulator::Symulator(const Konfiguracja& konfiguracja,
         walidatorzy.push_back(Walidator(dane));
     }
 }
+
+void Symulator::dodajNadejscia() {
+    while (nastepnaTransakcja < transakcje.size()
+           && transakcje[nastepnaTransakcja].nadejscie == czas) {
+        fifo.push(transakcje[nastepnaTransakcja]);
+        ++nastepnaTransakcja;
+    }
+}
