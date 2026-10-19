@@ -15,3 +15,7 @@ void Symulator::dodajNadejscia() {
         ++nastepnaTransakcja;
     }
 }
+
+bool Symulator::kolejkaPusta() const {
+    return fifo.empty();
+}
