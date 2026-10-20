@@ -143,7 +143,7 @@ void Pliki::zapiszWyniki(const std::string& nazwa,
                          const std::vector<WynikTransakcji>& wyniki) {
     std::ofstream plik(nazwa);
     if (!plik) {
-        throw std::runtime_error("Nie mozna utworzyc " + nazwa);
+        throw std::runtime_error("Nie mozna zapisac " + nazwa);
     }
     for (const auto& wynik : wyniki) {
         plik << wynik.idTransakcji << ' ' << wynik.idWalidatora << ' '
