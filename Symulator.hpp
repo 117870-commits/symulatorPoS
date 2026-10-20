@@ -14,6 +14,7 @@ public:
     long long pobierzCzasKonca() const;
 
 private:
+    Strategia strategia;
     std::vector<Transakcja> transakcje;
     std::vector<Walidator> walidatorzy;
     std::vector<WynikTransakcji> wyniki;
