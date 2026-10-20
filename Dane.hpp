@@ -31,3 +31,5 @@ struct WynikTransakcji {
     long long opoznienie = 0;
     bool terminowo = false;
 };
+
+enum class Strategia { FIFO, FEE };
