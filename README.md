@@ -28,19 +28,16 @@ Etap 2 jest zakończony. W repozytorium są już gotowe:
 
 ## Kompilacja i uruchomienie
 
-Kompilacja:
+Kompilacja w wierszu poleceń Windows:
+```bat
+g++ -std=c++17 -Wall -Wextra -pedantic main.cpp Walidator.cpp Pliki.cpp Symulator.cpp -o symulator.exe
+.\symulator.exe
+```
+
+Alternatywnie, jeśli uruchamiasz program z poziomu terminala bash / Linux / macOS:
 ```bash
 g++ -std=c++17 -Wall -Wextra -pedantic main.cpp Walidator.cpp Pliki.cpp Symulator.cpp -o symulator.exe
-```
-
-Uruchomienie:
-```bash
 ./symulator.exe
-```
-
-Na Windows może być:
-```bat
-symulator.exe
 ```
 
 ## Oczekiwany wynik dla przykładowych danych
@@ -57,4 +54,4 @@ To odpowiada kolejności: T1 -> T2 -> T3, przy jednym walidatorze i czasie wykon
 
 ## Uwaga
 
-Etap 3 (strategia FEE, priority_queue i losowanie stake) nie jest realizowany w tej wersji repozytorium. Repozytorium znajduje się na etapie 2, zgodnie z wymaganiem. 
+Etap 3 (strategia FEE, priority_queue i losowanie stake) nie jest realizowany w tej wersji repozytorium. Repozytorium znajduje się na etapie 2, zgodnie z wymaganiem.
