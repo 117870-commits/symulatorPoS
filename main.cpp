@@ -1,14 +1,16 @@
 #include "Pliki.hpp"
+#include "Symulator.hpp"
 #include <exception>
 #include <iostream>
-
 int main() {
     try {
         Konfiguracja konfiguracja = Pliki::wczytajKonfiguracje("konfiguracja.txt");
         std::vector<Transakcja> transakcje = Pliki::wczytajTransakcje("zgloszenia.txt");
-        std::cout << konfiguracja.walidatorzy.size() << ' ' << konfiguracja.ziarno << ' ' << transakcje.size() << '\n';
-        for (const Transakcja& t : transakcje) {
-            std::cout << t.id << ' ' << t.nadejscie << ' ' << t.czasWykonania << ' ' << t.fee << ' ' << t.deadline << '\n';
+        Symulator symulator(konfiguracja, transakcje);
+        std::vector<WynikTransakcji> wyniki = symulator.uruchom();
+        for (const WynikTransakcji& w : wyniki) {
+            std::cout << w.idTransakcji << ' ' << w.start << ' '
+                      << w.koniec << ' ' << w.oczekiwanie << '\n';
         }
         return 0;
     } catch (const std::exception& blad) {
