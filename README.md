@@ -1,83 +1,60 @@
 # Symulator PoS — obsługa transakcji
 
-Projekt w C++ na przedmiot Podstawy informatyki. Symulujemy obsługę transakcji przez walidatorów i porównujemy dwie strategie wyboru oczekujących zadań: FIFO oraz FEE.
+Projekt w C++ na przedmiot Podstawy informatyki. W etapie 2 zaimplementowaliśmy podstawę symulacji obsługi transakcji przez walidatorów z wykorzystaniem kolejki FIFO.
 
 ## Aktualny stan
 
-Repozytorium zawiera opis projektu, szczegółowy plan etapów oraz dane testowe. Pliki źródłowe C++ będziemy dodawać podczas realizacji kolejnych etapów — sam plan nie oznacza jeszcze, że program jest gotowy.
+Etap 2 jest zakończony. W repozytorium są już gotowe:
+- `Dane.hpp` — struktury danych transakcji i walidatora,
+- `Walidator.hpp` i `Walidator.cpp` — logika walidatora,
+- `Pliki.hpp` i `Pliki.cpp` — odczyt i zapis danych z plików,
+- `Symulator.hpp` i `Symulator.cpp` — przebieg symulacji z FIFO,
+- `main.cpp` — uruchomienie programu i zapis wyników do `wyniki_fifo.txt`.
 
-## Pliki
+## Pliki projektu
 
-- `opis_projektu.md` — założenia, reguły symulacji, dane i architektura.
-- `PLAN_PROJEKTU_POS.md` — instrukcja pracy krok po kroku.
-- `konfiguracja.txt` — przykładowa konfiguracja walidatorów i ziarno losowania.
-- `zgloszenia.txt` — przykładowe transakcje wejściowe.
-- `oczekiwane_wyniki.txt` — ręcznie policzone wyniki kontrolne dla FIFO i FEE.
+- `konfiguracja.txt` — konfiguracja walidatorów i ziarno,
+- `zgloszenia.txt` — transakcje wejściowe,
+- `oczekiwane_wyniki.txt` — ręcznie policzone wyniki kontrolne,
+- `wyniki_fifo.txt` — wynik wygenerowany przez program dla danych testowych.
 
-## Główne zasady
+## Główne zasady etapu 2
 
-- Czas symulacji liczymy w krokach całkowitych.
-- FIFO wybiera najwcześniej przybyłą transakcję, a przy remisie niższe ID.
-- FEE wybiera transakcję z najwyższą opłatą; przy remisie rozstrzygają wcześniejsze nadejście i niższe ID.
-- Stake wpływa na prawdopodobieństwo wyboru wolnego walidatora, ale nie na szybkość wykonania.
-- Dla porównania FIFO i FEE używamy tych samych danych i wspólnej listy losowań.
+- Czas symulacji liczony jest w krokach całkowitych.
+- Transakcje trafiają do kolejki FIFO w momencie ich nadejścia.
+- Pierwszy wolny walidator otrzymuje pierwszą transakcję z kolejki.
+- Po zakończeniu zadania walidator zwalnia się i zapisujemy wynik transakcji.
+- Program odczytuje dane z `konfiguracja.txt` i `zgloszenia.txt`, wykonuje symulację i zapisuje wyniki do `wyniki_fifo.txt`.
 
-## Planowane pliki kodu
+## Kompilacja i uruchomienie
 
-`main.cpp`, `Dane.hpp`, `Walidator.hpp`, `Walidator.cpp`, `Pliki.hpp`, `Pliki.cpp`, `Symulator.hpp`, `Symulator.cpp`, a w etapie statystyk także `Statystyki.hpp` i `Statystyki.cpp`.
+Kompilacja:
+```bash
+g++ -std=c++17 -Wall -Wextra -pedantic main.cpp Walidator.cpp Pliki.cpp Symulator.cpp -o symulator.exe
+```
 
-## Kompilacja
+Uruchomienie:
+```bash
+./symulator.exe
+```
 
-Projekt docelowo korzysta ze standardu C++17. Instrukcję kompilacji i uruchomienia uzupełnimy, gdy będą gotowe odpowiednie pliki źródłowe. Szczegółowe kroki znajdują się w `PLAN_PROJEKTU_POS.md`.
+Na Windows może być:
+```bat
+symulator.exe
+```
 
-## Praca w parze
+## Oczekiwany wynik dla przykładowych danych
 
-1. Podział obowiązków
+Program zapisuje wynik FIFO do `wyniki_fifo.txt` w następującym formacie:
+```text
+id_transakcji id_walidatora nadejscie start koniec oczekiwanie deadline opoznienie terminowo
+1 1 0 0 2 0 10 0 1
+2 1 0 2 4 2 10 0 1
+3 1 0 4 6 4 10 0 1
+```
 
-## Osoba A — dane, walidator i pliki
-Odpowiedzialność za przygotowanie danych i ich poprawność
-Pliki:
-- Dane.hpp
-- Walidator.hpp
-- Walidator.cpp
-- Pliki.hpp
-- Pliki.cpp
-Zadania:
-1. Utworzyć rekordy danych: Transakcja, DaneWalidatora, Konfiguracja i WynikTransakcji.
-2. Zaimplementować walidator — rozpoczęcie zadania, czas zakończenia, utworzenie wyniku i zwolnienie wykonawcy.
-3. Zaimplementować wczytywanie konfiguracja.txt i zgloszenia.txt.
-4. Sprawdzać poprawność danych, kompletność kolumn, powtarzające się ID i dodatkowe rekordy.
-5. Posortować walidatorów po ID, a transakcje po nadejściu i ID.
-6. Przygotować zapis wyników FIFO w klasie Pliki, zgodnie z interfejsem przewidzianym w planie.
+To odpowiada kolejności: T1 -> T2 -> T3, przy jednym walidatorze i czasie wykonania 2 dla każdej transakcji.
 
+## Uwaga
 
-
-
-## Osoba B — uruchomienie, symulator i FIFO
-Odpowiedzialność za przebieg symulacji i połączenie programu
-Pliki:
-- main.cpp
-- Symulator.hpp
-- Symulator.cpp
-- README.md
-Zadania:
-1. Uruchomić pierwszy program w C++17 i sprawdzić kompilację.
-2. Przygotować Symulator, który przechowuje transakcje, walidatorów, wyniki i kolejkę FIFO.
-3. Dodać transakcje do kolejki dopiero w ich czasie nadejścia.
-4. Pobierać pierwszą transakcję z FIFO i wybierać pierwszego wolnego walidatora według ID.
-5. Obsłużyć upływ czasu, kończenie zadań i zwalnianie walidatorów.
-6. Połączyć symulator z klasą Pliki w main.cpp, zapisać wyniki FIFO i przygotować instrukcję kompilacji oraz uruchomienia w README.md.
-
-
-
-## Ten podział bazuje na klasach i kolejności prac z rozdziałów 2.2–2.5 planu. PLAN_PROJEKTU_POS.md
- PLAN_PROJEKTU_POS.md
-
-2. Jak podzielić pracę, żeby nie blokować się nawzajem?
-Najważniejsze jest to, że osoba B potrzebuje typów danych i metod przygotowanych przez osobę A. Dlatego ustalcie wspólne interfejsy na początku, zanim zaczniecie pisać niezależne fragmenty.
-1. Najpierw wspólnie: ustalcie nazwy pól, metod i plików dokładnie według planu. Nie zmieniajcie samodzielnie interfejsów klas.
-2. Osoba A: zaczyna od Dane.hpp, a potem przygotowuje Walidator.hpp/.cpp i Pliki.hpp/.cpp zgodnie z kolejnością instrukcji.
-3. Osoba B: może równolegle przygotować początkowy main.cpp, kompilację i README.md. Następnie tworzy Symulator.hpp/.cpp, korzystając z ustalonych deklaracji.
-4. Po połączeniu: razem sprawdzacie kompilację, działanie odczytu, przebieg FIFO i zapis wyników. Wspólnie poprawiacie błędy integracji.
-Plan wymaga wpisywania kodu małymi fragmentami, po 1–6 linii, oraz kompilowania na wskazanych przystankach. Nie musicie więc czekać z całym testowaniem do końca etapu. opis_projektu.md
-To uproszczona symulacja idei Proof of Stake, a nie pełna implementacja blockchaina.
+Etap 3 (strategia FEE, priority_queue i losowanie stake) nie jest realizowany w tej wersji repozytorium. Repozytorium znajduje się na etapie 2, zgodnie z wymaganiem. 
