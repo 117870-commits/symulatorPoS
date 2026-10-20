@@ -55,3 +55,37 @@ void Symulator::sprawdzZakonczenia() {
         }
     }
 }
+
+bool Symulator::czyPozostalaPraca() const {
+    if (nastepnaTransakcja < transakcje.size() || !kolejkaPusta()) {
+        return true;
+    }
+
+    for (const Walidator& walidator : walidatorzy) {
+        if (!walidator.czyWolny()) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+std::vector<WynikTransakcji> Symulator::uruchom() {
+    while (true) {
+        dodajNadejscia();
+        przydzielZadania();
+
+        if (!czyPozostalaPraca()) {
+            break;
+        }
+
+        ++czas;
+        sprawdzZakonczenia();
+    }
+
+    return wyniki;
+}
+
+long long Symulator::pobierzCzasKonca() const {
+    return czas;
+}
