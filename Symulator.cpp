@@ -74,13 +74,13 @@ std::vector<WynikTransakcji> Symulator::uruchom() {
     while (true) {
         dodajNadejscia();
         przydzielZadania();
-        sprawdzZakonczenia();
 
         if (!czyPozostalaPraca()) {
             break;
         }
 
         ++czas;
+        sprawdzZakonczenia();
     }
 
     return wyniki;
