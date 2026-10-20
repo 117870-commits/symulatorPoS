@@ -145,10 +145,17 @@ void Pliki::zapiszWyniki(const std::string& nazwa,
     if (!plik) {
         throw std::runtime_error("Nie mozna zapisac " + nazwa);
     }
-    for (const auto& wynik : wyniki) {
+
+    plik << "id_transakcji id_walidatora nadejscie start koniec "
+         << "oczekiwanie deadline opoznienie terminowo\n";
+    for (const WynikTransakcji& wynik : wyniki) {
         plik << wynik.idTransakcji << ' ' << wynik.idWalidatora << ' '
              << wynik.nadejscie << ' ' << wynik.start << ' ' << wynik.koniec << ' '
-             << wynik.oczekiwanie << ' ' << wynik.deadline << ' ' << wynik.opoznienie << ' '
-             << wynik.terminowo << '\n';
+             << wynik.oczekiwanie << ' ' << wynik.deadline << ' '
+             << wynik.opoznienie << ' ' << wynik.terminowo << '\n';
+    }
+    plik.flush();
+    if (!plik) {
+        throw std::runtime_error("Blad zapisu " + nazwa);
     }
 }
