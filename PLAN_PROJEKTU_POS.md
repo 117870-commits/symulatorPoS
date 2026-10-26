@@ -1,44 +1,45 @@
-# Plan pracy nad symulatorem PoS
+# Symulator PoS — obsługa transakcji
 
-Mamy przygotowany schemat działania i diagram klas. Przygotowujemy opis zasad, dane testowe i program w C++.
+Projekt w C++ na przedmiot Podstawy informatyki. W etapie 3 rozszerzyliśmy podstawę symulacji o strategię FEE oraz wybór walidatora według stake.
 
-Przy każdym kroku zapisujemy działania i oczekiwany wynik. Odhaczamy kroki po sprawdzeniu wyniku. Na koniec spotkania notujemy jedną rzecz, od której zaczniemy następnym razem.
+## Aktualny stan
 
-## Co budujemy
+Etap 3 jest zakończony. W repozytorium są gotowe:
+- `Dane.hpp` — struktury danych transakcji, walidatora, konfiguracji i wyniku,
+- `Walidator.hpp` i `Walidator.cpp` — logika walidatora,
+- `Pliki.hpp` i `Pliki.cpp` — odczyt i zapis danych z plików,
+- `Symulator.hpp` i `Symulator.cpp` — przebieg symulacji dla FIFO i FEE,
+- `main.cpp` — uruchomienie programu i zapis wyników do `wyniki_fifo.txt` oraz `wyniki_fee.txt`.
 
-Użytkownik wysyła transakcję. Transakcja czeka w kolejce, aż zwolni się walidator. Walidator wykonuje jedno zadanie naraz. Porównujemy dwie kolejki: według kolejności nadejścia i według opłaty.
+## Co zostało dodane w etapie 3
 
-W projekcie korzystamy z uproszczonego pomysłu PoS: większy stake daje większą szansę wyboru wykonawcy. Nie odtwarzamy całego blockchaina ani konsensusu.
+- `Strategia::FIFO` i `Strategia::FEE`
+- kolejka priorytetowa `std::priority_queue` z komparatorem po fee, potem nadejściu, potem ID
+- wybór wolnego walidatora z uwzględnieniem jego stake i ziarna losowania
+- dwa osobne przebiegi symulacji: FIFO i FEE
+- czytelne pliki wejściowe i wynikowe z nazwami kolumn
 
-| Nazwa | Co oznacza u nas |
-|---|---|
-| FIFO | Najpierw obsługujemy transakcję, która wcześniej przyszła |
-| FEE | Najpierw obsługujemy oczekującą transakcję z najwyższą opłatą |
-| Stake | Liczba określająca szansę wyboru walidatora |
-| Deadline | Termin, do którego transakcja powinna skończyć obsługę |
-| Czas symulacji t | Licznik kroków: 0, 1, 2, 3… |
+## Pliki wejściowe i wynikowe
 
-Przy równym fee wybieramy wcześniejsze nadejście, a potem mniejsze ID. Dla FIFO transakcje z jednakowym czasem nadejścia porządkujemy po ID.
+- `konfiguracja.txt` — konfiguracja ziarna i walidatorów
+- `zgloszenia.txt` — listy transakcji z parametrami wejściowymi
+- `wyniki_fifo.txt` — wyniki dla strategii FIFO
+- `wyniki_fee.txt` — wyniki dla strategii FEE
+- `oczekiwane_wyniki.txt` — przykładowe wyniki kontrolne
 
-Walidatorzy mają jednakową szybkość. Każdy walidator zachowuje swój stake przez cały przebieg. Walidatorzy mogą mieć różne liczby monet. Rozpoczętej pracy nie przerywamy. Spóźnioną transakcję wykonujemy do końca.
+## Kompilacja
 
-## Etap 3. Dodajemy FEE i losowanie walidatora
+```bash
+g++ -std=c++17 -Wall -Wextra -pedantic main.cpp Walidator.cpp Pliki.cpp Symulator.cpp -o symulator.exe
+./symulator.exe
+```
 
-Etap 3 jest już zrealizowany i zatwierdzony w repozytorium. Dodatkowo w plikach wejściowych i wynikowych wprowadzono czytelne nagłówki z nazwami kolumn.
+## Zasady zgodności z planem
 
-### Zrealizowane elementy etapu 3
+Repozytorium jest zgodne z planem etapu 3:
+- dodano FEE,
+- dodano wybór walidatora według stake,
+- zapisano wyniki dla obu strategii,
+- poprawiono czytelność plików tekstowych.
 
-- dodanie strategii `Strategia::FIFO` i `Strategia::FEE`
-- kolejka `std::priority_queue` z komparatorem po fee, następnie nadejściu, potem ID
-- wybór wolnego walidatora według stake i ziarna losowania
-- uruchomienie dwóch przebiegów: FIFO oraz FEE
-- zapis do `wyniki_fifo.txt` i `wyniki_fee.txt`
-- pliki tekstowe w formacie czytelnym, z nazwami kolumn i opisami
-
-### Oczekiwany rezultat etapu 3
-
-Dla danych testowych z `konfiguracja.txt` i `zgloszenia.txt` oba przebiegi pracują poprawnie, a w wynikach widać kolumny z nazwami i wartościami opisanymi wprost.
-
-### Uwaga
-
-Etap 3 jest zakończony. Etapy 4, 5 i 6 nie były wykonywane, zgodnie z prośbą ograniczenia do samego etapu 3.
+Etapy 4, 5 i 6 nie były wykonywane, zgodnie z ustaleniem ograniczenia do samego etapu 3.

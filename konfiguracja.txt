@@ -1,266 +1,141 @@
-#include "Pliki.hpp"
+#include "Symulator.hpp"
 
-#include <algorithm>
-#include <fstream>
-#include <limits>
-#include <sstream>
-#include <stdexcept>
-#include <string>
-#include <vector>
+#include <random>
 
-namespace {
-
-std::string przytnij(const std::string& tekst) {
-    std::size_t pocz = 0;
-    while (pocz < tekst.size() && std::isspace(static_cast<unsigned char>(tekst[pocz]))) {
-        ++pocz;
+bool PorownajFee::operator()(const Transakcja& a, const Transakcja& b) const {
+    if (a.fee != b.fee) {
+        return a.fee < b.fee;
     }
-
-    std::size_t kon = tekst.size();
-    while (kon > pocz && std::isspace(static_cast<unsigned char>(tekst[kon - 1]))) {
-        --kon;
+    if (a.nadejscie != b.nadejscie) {
+        return a.nadejscie > b.nadejscie;
     }
-    return tekst.substr(pocz, kon - pocz);
+    return a.id > b.id;
 }
 
-bool czyDanaLinia(const std::string& linia) {
-    std::istringstream wejscie(linia);
-    std::string token;
-    bool znalezionoToken = false;
-
-    while (wejscie >> token) {
-        if (token.find('=') != std::string::npos) {
-            return false;
-        }
-        if (token.find_first_not_of("+-0123456789") != std::string::npos) {
-            return false;
-        }
-        znalezionoToken = true;
-    }
-
-    return znalezionoToken;
-}
-
-std::vector<std::string> wczytajWierszeDanych(const std::string& nazwa) {
-    std::ifstream plik(nazwa);
-    if (!plik) {
-        throw std::runtime_error("Nie mozna otworzyc " + nazwa);
-    }
-
-    std::vector<std::string> linie;
-    std::string linia;
-    while (std::getline(plik, linia)) {
-        std::string czysta = przytnij(linia);
-        if (czysta.empty() || czysta[0] == '#' || czysta[0] == ';') {
-            continue;
-        }
-        if (czysta.find('=') != std::string::npos) {
-            linie.push_back(czysta);
-            continue;
-        }
-        if (czyDanaLinia(czysta)) {
-            linie.push_back(czysta);
-        }
-    }
-
-    return linie;
-}
-
-void blad(const std::string& nazwa, int numer, const std::string& powod) {
-    throw std::runtime_error(nazwa + " (wiersz " + std::to_string(numer) + "): " + powod);
-}
-
-std::istringstream wczytajWiersz(std::ifstream& plik,
-                                const std::string& nazwa, int numer) {
-    std::string linia;
-    if (!std::getline(plik, linia)) {
-        blad(nazwa, numer, "brak wymaganego wiersza");
-    }
-    return std::istringstream(linia);
-}
-
-void sprawdzKoniecWiersza(std::istringstream& wiersz,
-                          const std::string& nazwa, int numer) {
-    std::string nadmiar;
-    if (wiersz >> nadmiar) {
-        blad(nazwa, numer, "za duzo danych w wierszu");
+Symulator::Symulator(const Konfiguracja& konfiguracja,
+                     const std::vector<Transakcja>& wejscie,
+                     Strategia wybranaStrategia)
+    : strategia(wybranaStrategia),
+      transakcje(wejscie),
+      generator(konfiguracja.ziarno) {
+    for (const DaneWalidatora& dane : konfiguracja.walidatorzy) {
+        walidatorzy.push_back(Walidator(dane));
     }
 }
 
-void sprawdzKoniecPliku(std::ifstream& plik,
-                        const std::string& nazwa, int numer) {
-    std::string linia;
-    while (std::getline(plik, linia)) {
-        std::string czysta = przytnij(linia);
-        if (czysta.empty() || czysta[0] == '#' || czysta[0] == ';') {
-            continue;
+void Symulator::dodajNadejscia() {
+    while (nastepnaTransakcja < transakcje.size()
+           && transakcje[nastepnaTransakcja].nadejscie == czas) {
+        const Transakcja& transakcja = transakcje[nastepnaTransakcja];
+        if (strategia == Strategia::FIFO) {
+            fifo.push(transakcja);
+        } else {
+            fee.push(transakcja);
         }
-        std::istringstream wiersz(czysta);
-        std::string nadmiar;
-        if (wiersz >> nadmiar) {
-            blad(nazwa, numer, "nadmiarowe dane po ostatnim rekordzie");
-        }
-        ++numer;
+        ++nastepnaTransakcja;
     }
 }
 
-long long pobierzWartoscKlucza(const std::string& linia, const std::string& klucz) {
-    std::size_t indeks = linia.find(klucz);
-    if (indeks == std::string::npos) {
+bool Symulator::kolejkaPusta() const {
+    if (strategia == Strategia::FIFO) {
+        return fifo.empty();
+    }
+    return fee.empty();
+}
+
+Transakcja Symulator::pobierzTransakcje() {
+    if (strategia == Strategia::FIFO) {
+        Transakcja transakcja = fifo.front();
+        fifo.pop();
+        return transakcja;
+    }
+
+    Transakcja transakcja = fee.top();
+    fee.pop();
+    return transakcja;
+}
+
+int Symulator::wybierzWalidatora() const {
+    std::vector<int> wolni;
+    long long sumaStake = 0;
+
+    for (std::size_t i = 0; i < walidatorzy.size(); ++i) {
+        if (walidatorzy[i].czyWolny()) {
+            wolni.push_back(static_cast<int>(i));
+            sumaStake += walidatorzy[i].pobierzStake();
+        }
+    }
+
+    if (wolni.empty() || sumaStake <= 0) {
         return -1;
     }
-    std::size_t eq = linia.find('=', indeks);
-    if (eq == std::string::npos) {
-        return -1;
+
+    std::uniform_real_distribution<double> rozklad(0.0, 1.0);
+    const double los = rozklad(generator);
+    double prog = 0.0;
+
+    for (int indeks : wolni) {
+        prog += static_cast<double>(walidatorzy[indeks].pobierzStake())
+                / static_cast<double>(sumaStake);
+        if (los < prog) {
+            return indeks;
+        }
     }
-    std::istringstream wejscie(linia.substr(eq + 1));
-    long long wartosc = 0;
-    if (!(wejscie >> wartosc)) {
-        return -1;
-    }
-    return wartosc;
+
+    return wolni.back();
 }
 
-} // namespace
-
-Konfiguracja Pliki::wczytajKonfiguracje(const std::string& nazwa) {
-    std::vector<std::string> linie = wczytajWierszeDanych(nazwa);
-    Konfiguracja konfiguracja;
-
-    int liczbaWalidatorow = -1;
-    long long ziarno = -1;
-
-    for (const std::string& linia : linie) {
-        std::size_t eq = linia.find('=');
-        if (eq != std::string::npos) {
-            std::string klucz = przytnij(linia.substr(0, eq));
-            std::string wartosc = przytnij(linia.substr(eq + 1));
-            if (klucz == "seed" || klucz == "ziarno" || klucz == "seed_losowania") {
-                std::istringstream wejscie(wartosc);
-                wejscie >> ziarno;
-            } else if (klucz == "validator_count" || klucz == "liczba_walidatorow") {
-                std::istringstream wejscie(wartosc);
-                wejscie >> liczbaWalidatorow;
-            }
-            continue;
+void Symulator::przydzielZadania() {
+    while (!kolejkaPusta()) {
+        int index = wybierzWalidatora();
+        if (index == -1) {
+            break;
         }
 
-        std::istringstream wejscie(linia);
-        long long a = 0;
-        long long b = 0;
-        if (wejscie >> a >> b) {
-            if (liczbaWalidatorow == -1 && ziarno == -1) {
-                liczbaWalidatorow = static_cast<int>(a);
-                ziarno = b;
-                continue;
-            }
-            DaneWalidatora dane;
-            dane.id = static_cast<int>(a);
-            dane.stake = b;
-            if (dane.id <= 0 || dane.stake <= 0) {
-                throw std::runtime_error(nazwa + ": nieprawidlowe dane walidatora");
-            }
-            konfiguracja.walidatorzy.push_back(dane);
-        }
+        Transakcja transakcja = pobierzTransakcje();
+        walidatorzy[index].rozpocznij(transakcja, czas);
     }
-
-    if (liczbaWalidatorow < 0) {
-        throw std::runtime_error(nazwa + ": brak liczby walidatorow");
-    }
-    if (ziarno < 0) {
-        throw std::runtime_error(nazwa + ": brak ziarna losowania");
-    }
-    if (static_cast<int>(konfiguracja.walidatorzy.size()) != liczbaWalidatorow) {
-        throw std::runtime_error(nazwa + ": liczba walidatorow nie zgadza sie z danymi");
-    }
-
-    konfiguracja.ziarno = static_cast<unsigned int>(ziarno);
-    std::sort(konfiguracja.walidatorzy.begin(), konfiguracja.walidatorzy.end(),
-              [](const DaneWalidatora& a, const DaneWalidatora& b) {
-                  return a.id < b.id;
-              });
-    for (std::size_t i = 1; i < konfiguracja.walidatorzy.size(); ++i) {
-        if (konfiguracja.walidatorzy[i - 1].id == konfiguracja.walidatorzy[i].id) {
-            throw std::runtime_error(nazwa + ": powtorzone ID walidatora");
-        }
-    }
-
-    return konfiguracja;
 }
 
-std::vector<Transakcja> Pliki::wczytajTransakcje(const std::string& nazwa) {
-    std::vector<std::string> linie = wczytajWierszeDanych(nazwa);
-    std::vector<Transakcja> transakcje;
-    int liczbaTransakcji = -1;
-
-    for (const std::string& linia : linie) {
-        std::size_t eq = linia.find('=');
-        if (eq != std::string::npos) {
-            std::string klucz = przytnij(linia.substr(0, eq));
-            std::string wartosc = przytnij(linia.substr(eq + 1));
-            if (klucz == "transaction_count" || klucz == "liczba_transakcji") {
-                std::istringstream wejscie(wartosc);
-                wejscie >> liczbaTransakcji;
-            }
-            continue;
-        }
-
-        std::istringstream wejscie(linia);
-        Transakcja transakcja;
-        if (wejscie >> transakcja.id >> transakcja.nadejscie >> transakcja.czasWykonania
-                    >> transakcja.fee >> transakcja.deadline) {
-            if (transakcja.id <= 0 || transakcja.nadejscie < 0
-                || transakcja.czasWykonania <= 0 || transakcja.fee < 0
-                || transakcja.deadline < transakcja.nadejscie) {
-                throw std::runtime_error(nazwa + ": nieprawidlowe wartosci transakcji");
-            }
-            transakcje.push_back(transakcja);
+void Symulator::sprawdzZakonczenia() {
+    for (Walidator& walidator : walidatorzy) {
+        if (walidator.czyKonczy(czas)) {
+            WynikTransakcji wynik = walidator.zakoncz();
+            wyniki.push_back(wynik);
         }
     }
-
-    if (liczbaTransakcji >= 0 && static_cast<int>(transakcje.size()) != liczbaTransakcji) {
-        throw std::runtime_error(nazwa + ": liczba transakcji nie zgadza sie z danymi");
-    }
-
-    std::sort(transakcje.begin(), transakcje.end(),
-              [](const Transakcja& a, const Transakcja& b) {
-                  if (a.nadejscie != b.nadejscie) {
-                      return a.nadejscie < b.nadejscie;
-                  }
-                  return a.id < b.id;
-              });
-
-    for (std::size_t i = 1; i < transakcje.size(); ++i) {
-        if (transakcje[i - 1].id == transakcje[i].id) {
-            throw std::runtime_error(nazwa + ": powtorzone ID transakcji");
-        }
-    }
-
-    return transakcje;
 }
 
-void Pliki::zapiszWyniki(const std::string& nazwa,
-                         const std::vector<WynikTransakcji>& wyniki) {
-    std::ofstream plik(nazwa);
-    if (!plik) {
-        throw std::runtime_error("Nie mozna zapisac " + nazwa);
+bool Symulator::czyPozostalaPraca() const {
+    if (nastepnaTransakcja < transakcje.size() || !kolejkaPusta()) {
+        return true;
     }
 
-    plik << "# wynik symulacji\n";
-    plik << "# kolumny: transaction_id validator_id arrival_time start_time end_time "
-         << "waiting_time deadline delay is_on_time\n";
-    plik << "transaction_id validator_id arrival_time start_time end_time waiting_time "
-         << "deadline delay is_on_time\n";
-
-    for (const WynikTransakcji& wynik : wyniki) {
-        plik << wynik.idTransakcji << ' ' << wynik.idWalidatora << ' '
-             << wynik.nadejscie << ' ' << wynik.start << ' ' << wynik.koniec << ' '
-             << wynik.oczekiwanie << ' ' << wynik.deadline << ' '
-             << wynik.opoznienie << ' ' << (wynik.terminowo ? "true" : "false") << '\n';
+    for (const Walidator& walidator : walidatorzy) {
+        if (!walidator.czyWolny()) {
+            return true;
+        }
     }
 
-    plik.flush();
-    if (!plik) {
-        throw std::runtime_error("Blad zapisu " + nazwa);
+    return false;
+}
+
+std::vector<WynikTransakcji> Symulator::uruchom() {
+    while (true) {
+        dodajNadejscia();
+        przydzielZadania();
+
+        if (!czyPozostalaPraca()) {
+            break;
+        }
+
+        ++czas;
+        sprawdzZakonczenia();
     }
+
+    return wyniki;
+}
+
+long long Symulator::pobierzCzasKonca() const {
+    return czas;
 }
