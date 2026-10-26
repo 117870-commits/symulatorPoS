@@ -1,161 +1,120 @@
 #include "Pliki.hpp"
-
 #include <algorithm>
 #include <fstream>
 #include <limits>
+#include <map>
+#include <set>
 #include <sstream>
 #include <stdexcept>
 
 namespace {
-void blad(const std::string& nazwa, int numer, const std::string& powod) {
-    throw std::runtime_error(nazwa + " (wiersz " + std::to_string(numer)
-                             + "): " + powod);
+struct Sekcja { std::string nazwa; int linia; std::map<std::string, long long> pola; };
+std::string przytnij(const std::string& s) {
+    auto a = s.find_first_not_of(" \t\r\n");
+    if (a == std::string::npos) return "";
+    return s.substr(a, s.find_last_not_of(" \t\r\n") - a + 1);
 }
-
-std::istringstream wczytajWiersz(std::ifstream& plik,
-                                const std::string& nazwa, int numer) {
-    std::string linia;
-    if (!std::getline(plik, linia)) {
-        blad(nazwa, numer, "brak wymaganego wiersza");
-    }
-    return std::istringstream(linia);
+[[noreturn]] void blad(const std::string& plik, int linia, const std::string& powod) {
+    throw std::runtime_error(plik + " (wiersz " + std::to_string(linia) + "): " + powod);
 }
-
-void sprawdzKoniecWiersza(std::istringstream& wiersz,
-                          const std::string& nazwa, int numer) {
-    std::string nadmiar;
-    if (wiersz >> nadmiar) {
-        blad(nazwa, numer, "za duzo danych w wierszu");
-    }
-}
-
-void sprawdzKoniecPliku(std::ifstream& plik,
-                        const std::string& nazwa, int numer) {
-    std::string linia;
-    while (std::getline(plik, linia)) {
-        std::istringstream wiersz(linia);
-        std::string nadmiar;
-        if (wiersz >> nadmiar) {
-            blad(nazwa, numer, "nadmiarowe dane po ostatnim rekordzie");
-        }
-        ++numer;
-    }
-}
-}
-
-Konfiguracja Pliki::wczytajKonfiguracje(const std::string& nazwa) {
+std::vector<Sekcja> czytaj(const std::string& nazwa) {
     std::ifstream plik(nazwa);
-    if (!plik) {
-        throw std::runtime_error("Nie mozna otworzyc " + nazwa);
+    if (!plik) throw std::runtime_error("Nie mozna otworzyc " + nazwa);
+    std::vector<Sekcja> sekcje;
+    std::string linia;
+    int nr = 0;
+    while (std::getline(plik, linia)) {
+        ++nr;
+        auto komentarz = linia.find_first_of("#;");
+        if (komentarz != std::string::npos) linia.erase(komentarz);
+        linia = przytnij(linia);
+        if (linia.empty()) continue;
+        if (linia.front() == '[' && linia.back() == ']') {
+            auto nazwaSekcji = przytnij(linia.substr(1, linia.size()-2));
+            if (nazwaSekcji.empty()) blad(nazwa, nr, "pusta nazwa sekcji");
+            sekcje.push_back({nazwaSekcji,nr,{}});
+            continue;
+        }
+        if (sekcje.empty()) blad(nazwa, nr, "pole przed sekcja");
+        auto znak = linia.find('=');
+        if (znak == std::string::npos) blad(nazwa, nr, "oczekiwano nazwa = liczba");
+        auto klucz = przytnij(linia.substr(0,znak));
+        auto wartosc = przytnij(linia.substr(znak+1));
+        long long liczba;
+        std::istringstream strumien(wartosc);
+        char nadmiar;
+        if (klucz.empty() || !(strumien >> liczba) || (strumien >> nadmiar)) blad(nazwa,nr,"nieprawidlowa liczba lub pole");
+        if (!sekcje.back().pola.emplace(klucz,liczba).second) blad(nazwa,nr,"powtorzone pole " + klucz);
     }
-    auto naglowek = wczytajWiersz(plik, nazwa, 1);
-
-    int liczba = 0;
-    long long ziarno = 0;
-    if (!(naglowek >> liczba >> ziarno)) {
-        blad(nazwa, 1, "oczekujemy liczby walidatorow i ziarna");
-    }
-    sprawdzKoniecWiersza(naglowek, nazwa, 1);
-    if (liczba < 1 || ziarno < 0
-        || static_cast<unsigned long long>(ziarno)
-           > std::numeric_limits<unsigned int>::max()) {
-        blad(nazwa, 1, "nieprawidlowa liczba walidatorow lub ziarno");
-    }
+    if (plik.bad()) throw std::runtime_error("Blad odczytu " + nazwa);
+    return sekcje;
+}
+void pola(const Sekcja& s, const std::string& nazwa, const std::set<std::string>& wymagane) {
+    for (const auto& p : s.pola) if (!wymagane.count(p.first)) blad(nazwa,s.linia,"nieznane pole " + p.first);
+    for (const auto& p : wymagane) if (!s.pola.count(p)) blad(nazwa,s.linia,"brak pola " + p);
+}
+int id(const Sekcja& s, const std::string& nazwa) {
+    auto n = s.pola.at("id");
+    if (n <= 0 || n > std::numeric_limits<int>::max()) blad(nazwa,s.linia,"ID poza zakresem");
+    return static_cast<int>(n);
+}
+}
+Konfiguracja Pliki::wczytajKonfiguracje(const std::string& nazwa) {
+    auto sekcje = czytaj(nazwa);
     Konfiguracja konfiguracja;
-    konfiguracja.ziarno = static_cast<unsigned int>(ziarno);
-    for (int i = 0; i < liczba; ++i) {
-        auto wiersz = wczytajWiersz(plik, nazwa, i + 2);
-        DaneWalidatora dane;
-        if (!(wiersz >> dane.id >> dane.stake)) {
-            blad(nazwa, i + 2, "oczekujemy ID i stake");
-        }
-        sprawdzKoniecWiersza(wiersz, nazwa, i + 2);
-        if (dane.id <= 0 || dane.stake <= 0) {
-            blad(nazwa, i + 2, "ID i stake musza byc dodatnie");
-        }
-        konfiguracja.walidatorzy.push_back(dane);
+    bool maSymulacje = false;
+    std::set<int> identyfikatory;
+    for (const auto& s : sekcje) {
+        if (s.nazwa == "symulacja") {
+            if (maSymulacje) blad(nazwa,s.linia,"powtorzona sekcja symulacja");
+            pola(s,nazwa,{"ziarno"});
+            auto ziarno = s.pola.at("ziarno");
+            if (ziarno < 0 || static_cast<unsigned long long>(ziarno) > std::numeric_limits<unsigned int>::max()) blad(nazwa,s.linia,"ziarno poza zakresem");
+            konfiguracja.ziarno = static_cast<unsigned int>(ziarno);
+            maSymulacje = true;
+        } else if (s.nazwa == "walidator") {
+            pola(s,nazwa,{"id","stake"});
+            DaneWalidatora w{id(s,nazwa),s.pola.at("stake")};
+            if (w.stake <= 0) blad(nazwa,s.linia,"stake musi byc dodatni");
+            if (!identyfikatory.insert(w.id).second) blad(nazwa,s.linia,"powtorzone ID walidatora");
+            konfiguracja.walidatorzy.push_back(w);
+        } else blad(nazwa,s.linia,"nieznana sekcja " + s.nazwa);
     }
-    sprawdzKoniecPliku(plik, nazwa, liczba + 2);
-    std::sort(konfiguracja.walidatorzy.begin(), konfiguracja.walidatorzy.end(),
-              [](const DaneWalidatora& a, const DaneWalidatora& b) {
-                  return a.id < b.id;
-              });
-    for (std::size_t i = 1; i < konfiguracja.walidatorzy.size(); ++i) {
-        if (konfiguracja.walidatorzy[i - 1].id == konfiguracja.walidatorzy[i].id) {
-            throw std::runtime_error(nazwa + ": powtorzone ID walidatora");
-        }
-    }
+    if (!maSymulacje || konfiguracja.walidatorzy.empty()) blad(nazwa,1,"wymagana sekcja symulacja i co najmniej jeden walidator");
+    std::sort(konfiguracja.walidatorzy.begin(),konfiguracja.walidatorzy.end(),[](const auto& a,const auto& b){return a.id < b.id;});
     return konfiguracja;
 }
-
 std::vector<Transakcja> Pliki::wczytajTransakcje(const std::string& nazwa) {
-    std::ifstream plik(nazwa);
-    if (!plik) {
-        throw std::runtime_error("Nie mozna otworzyc " + nazwa);
+    auto sekcje = czytaj(nazwa);
+    std::vector<Transakcja> wynik;
+    std::set<int> identyfikatory;
+    for (const auto& s : sekcje) {
+        if (s.nazwa != "transakcja") blad(nazwa,s.linia,"nieznana sekcja " + s.nazwa);
+        pola(s,nazwa,{"id","nadejscie","czas_wykonania","fee","deadline"});
+        Transakcja t{id(s,nazwa),s.pola.at("nadejscie"),s.pola.at("czas_wykonania"),s.pola.at("fee"),s.pola.at("deadline")};
+        if (!identyfikatory.insert(t.id).second) blad(nazwa,s.linia,"powtorzone ID transakcji");
+        if (t.nadejscie < 0 || t.czasWykonania <= 0 || t.fee < 0 || t.deadline < t.nadejscie) blad(nazwa,s.linia,"nieprawidlowe wartosci transakcji");
+        wynik.push_back(t);
     }
-    auto naglowek = wczytajWiersz(plik, nazwa, 1);
-
-    int liczba = 0;
-    if (!(naglowek >> liczba)) {
-        blad(nazwa, 1, "oczekujemy liczby transakcji");
-    }
-    sprawdzKoniecWiersza(naglowek, nazwa, 1);
-    if (liczba < 0) {
-        blad(nazwa, 1, "liczba transakcji nie moze byc ujemna");
-    }
-    std::vector<Transakcja> transakcje;
-    for (int i = 0; i < liczba; ++i) {
-        auto wiersz = wczytajWiersz(plik, nazwa, i + 2);
-        Transakcja transakcja;
-        if (!(wiersz >> transakcja.id >> transakcja.nadejscie
-              >> transakcja.czasWykonania >> transakcja.fee >> transakcja.deadline)) {
-            blad(nazwa, i + 2, "oczekujemy pieciu liczb transakcji");
-        }
-        sprawdzKoniecWiersza(wiersz, nazwa, i + 2);
-        if (transakcja.id <= 0 || transakcja.nadejscie < 0
-            || transakcja.czasWykonania <= 0 || transakcja.fee < 0
-            || transakcja.deadline < transakcja.nadejscie) {
-            blad(nazwa, i + 2, "nieprawidlowe wartosci transakcji");
-        }
-        transakcje.push_back(transakcja);
-    }
-    sprawdzKoniecPliku(plik, nazwa, liczba + 2);
-    std::sort(transakcje.begin(), transakcje.end(),
-              [](const Transakcja& a, const Transakcja& b) {
-                  return a.id < b.id;
-              });
-    for (std::size_t i = 1; i < transakcje.size(); ++i) {
-        if (transakcje[i - 1].id == transakcje[i].id) {
-            throw std::runtime_error(nazwa + ": powtorzone ID transakcji");
-        }
-    }
-    std::sort(transakcje.begin(), transakcje.end(),
-              [](const Transakcja& a, const Transakcja& b) {
-                  if (a.nadejscie != b.nadejscie) {
-                      return a.nadejscie < b.nadejscie;
-                  }
-                  return a.id < b.id;
-              });
-    return transakcje;
+    std::sort(wynik.begin(),wynik.end(),[](const auto& a,const auto& b){return a.nadejscie != b.nadejscie ? a.nadejscie < b.nadejscie : a.id < b.id;});
+    return wynik;
 }
-
-void Pliki::zapiszWyniki(const std::string& nazwa,
-                         const std::vector<WynikTransakcji>& wyniki) {
+void Pliki::zapiszWyniki(const std::string& nazwa, const std::vector<WynikTransakcji>& wyniki) {
     std::ofstream plik(nazwa);
-    if (!plik) {
-        throw std::runtime_error("Nie mozna zapisac " + nazwa);
-    }
-
-    plik << "id_transakcji id_walidatora nadejscie start koniec "
-         << "oczekiwanie deadline opoznienie terminowo\n";
-    for (const WynikTransakcji& wynik : wyniki) {
-        plik << wynik.idTransakcji << ' ' << wynik.idWalidatora << ' '
-             << wynik.nadejscie << ' ' << wynik.start << ' ' << wynik.koniec << ' '
-             << wynik.oczekiwanie << ' ' << wynik.deadline << ' '
-             << wynik.opoznienie << ' ' << wynik.terminowo << '\n';
+    if (!plik) throw std::runtime_error("Nie mozna zapisac " + nazwa);
+    plik << "# Wyniki w kolejnosci zakonczenia. Czas jest liczony w krokach.\n";
+    for (const auto& w : wyniki) {
+        plik << "\n[wynik]\n"
+             << "id_transakcji = " << w.idTransakcji << '\n'
+             << "id_walidatora = " << w.idWalidatora << '\n'
+             << "nadejscie = " << w.nadejscie << '\n'
+             << "start = " << w.start << '\n'
+             << "koniec = " << w.koniec << '\n'
+             << "oczekiwanie = " << w.oczekiwanie << '\n'
+             << "deadline = " << w.deadline << '\n'
+             << "opoznienie = " << w.opoznienie << '\n'
+             << "terminowo = " << (w.terminowo ? "tak" : "nie") << '\n';
     }
     plik.flush();
-    if (!plik) {
-        throw std::runtime_error("Blad zapisu " + nazwa);
-    }
+    if (!plik) throw std::runtime_error("Blad zapisu " + nazwa);
 }

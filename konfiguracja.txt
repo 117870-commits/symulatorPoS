@@ -1,2 +1,8 @@
-1 12345
-1 10
+# Ustawienia wspolne dla obu przebiegow.
+[symulacja]
+ziarno = 12345  # To samo ziarno daje powtarzalne losowania.
+
+# Kazda sekcja opisuje jednego walidatora.
+[walidator]
+id = 1
+stake = 10  # Waga losowania wsrod wolnych walidatorow.

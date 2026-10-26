@@ -91,45 +91,21 @@ Transakcje, walidatorów, losowania i wyniki przechowujemy w std::vector. FIFO o
 
 ## 1.3. Pliki wejściowe
 
-Przygotowujemy `konfiguracja.txt` i `zgloszenia.txt`. Zapisujemy liczby oddzielone spacjami, bez nagłówków i komentarzy. Na początek używamy jednego walidatora i trzech transakcji, żeby łatwo sprawdzić kolejność obsługi.
+Od etapu 3 używamy czytelnego formatu inspirowanego plikami systemd: `[sekcja]`, `pole = wartość` i komentarze `#` lub `;`. To uproszczony format własny, nie pełna składnia systemd. Puste linie i komentarze są ignorowane; komentarz może też wystąpić po wartości. Nie podajemy liczby rekordów — program zlicza sekcje.
 
-### konfiguracja.txt
+`konfiguracja.txt` zawiera jedną sekcję `[symulacja]` z nieujemnym `ziarno` oraz co najmniej jedną sekcję `[walidator]` z dodatnimi `id` i `stake`. `zgloszenia.txt` zawiera sekcje `[transakcja]` z polami `id`, `nadejscie`, `czas_wykonania`, `fee`, `deadline`. Pusta lista transakcji to pusty plik albo same komentarze. Przykłady znajdują się w plikach wejściowych i aktualizacji planu.
 
-Pierwszy wiersz zawiera `liczbaWalidatorow ziarnoLosowania`. Każdy następny wiersz opisuje jednego walidatora: `id stake`.
-
-```text
-1 12345
-1 10
-```
-
-Mamy jednego walidatora, ziarno 12345 i walidatora o ID 1 ze stake 10. Ziarno jest nieujemną liczbą całkowitą, od której zaczynamy generowanie losowań. Liczba walidatorów musi wynosić co najmniej 1.
-
-### zgloszenia.txt
-
-Pierwszy wiersz zawiera liczbę transakcji. Każdy następny wiersz ma pięć kolumn: `id nadejscie czasWykonania fee deadline`.
-
-```text
-3
-1 0 2 1 10
-2 0 2 9 10
-3 0 2 4 10
-```
-
-Wszystkie trzy transakcje nadchodzą w czasie 0, trwają po 2 kroki i mają deadline 10. Ich opłaty wynoszą 1, 9 i 4. Liczba transakcji może wynosić 0; wtedy plik zawiera tylko pierwszy wiersz z zerem.
-
-### Sprawdzanie wejścia
-
-Odrzucamy brak pliku, dane inne niż oczekiwane liczby całkowite, niewłaściwą liczbę kolumn i liczbę rekordów niezgodną z pierwszym wierszem. Sprawdzamy też ograniczenia z tabel: poprawne ID, dodatni stake i czas wykonania, nieujemne nadejście i fee oraz deadline nie wcześniejszy od nadejścia. W razie błędu podajemy nazwę pliku i przyczynę; nie uruchamiamy symulacji na częściowo wczytanych danych.
+Program odrzuca brakujące lub nadmiarowe pola, powtórzone pola i ID, nieznane sekcje, niepoprawne liczby i wartości spoza dopuszczalnych zakresów; komunikat zawiera nazwę pliku i numer wiersza. Stare pliki w formacie samych liczb trzeba przepisać do nowego formatu.
 
 ### Planowany zapis wyników
 
-Każda strategia zapisuje osobny plik: `wyniki_fifo.txt` lub `wyniki_fee.txt`. W wierszu wyniku umieszczamy ID transakcji, ID walidatora, nadejście, start, koniec, oczekiwanie, deadline, opóźnienie i terminowość. Na końcu dodajemy podsumowanie przebiegu. Zapis wyników implementujemy w etapie 2, a pełne statystyki w etapie 5.
+Każda strategia zapisuje osobny plik: `wyniki_fifo.txt` lub `wyniki_fee.txt`. W sekcji `[wynik]` umieszczamy nazwane pola: ID transakcji i walidatora, nadejście, start, koniec, oczekiwanie, deadline, opóźnienie i terminowość (`tak` lub `nie`). Na końcu dodajemy podsumowanie przebiegu. Zapis wyników implementujemy w etapie 2, a pełne statystyki w etapie 5.
 
 ## Stan pracy
 
 Przechodzimy przez te same sześć etapów co na tablicy 03 / Plan pracy w Figmie. Odhaczamy działania po sprawdzeniu wyniku. Pod każdym etapem zapisujemy, co rzeczywiście zrobiliśmy, w których plikach i jaki był wynik testu. Pola poniżej uzupełniamy w tym dokumencie albo po wklejeniu do Google Docs.
 
-Mamy już opis, pliki wejściowe i przykład w oczekiwane_wyniki.txt. Poniższa lista służy do naszego dalszego sprawdzania i notowania postępów; same przygotowane dokumenty nie oznaczają, że program został napisany.
+Etapy 2 i 3 zostały zaimplementowane i sprawdzone testami. Poniższe listy pozostają materiałem do dalszej pracy; zapis wykonanych prób znajduje się pod etapem 3.
 
 ### Etap 1. Ustalamy zasady
 
@@ -144,16 +120,15 @@ Co robimy:
 Na koniec etapu:
 
 - opis_projektu.md: cel, reguły, pola i zadania klas.
-- konfiguracja.txt: liczba walidatorów, seed; potem ID i stake.
-- zgloszenia.txt: liczba transakcji; potem ID, nadejście,
-- czas wykonania, fee i deadline.
+- konfiguracja.txt: sekcja symulacji z ziarnem i sekcje walidatorów z ID i stake.
+- zgloszenia.txt: sekcje transakcji z nazwanymi polami ID, nadejście, czas wykonania, fee i deadline.
 - oczekiwane_wyniki.txt: obliczenia FIFO i FEE;
 - start, koniec, oczekiwanie oraz kolejność.
 - Test: potrafimy odtworzyć ten sam przykład.
 
 Nasz zapis postępu:
 
-- Status (niezaczęty / w trakcie / zakończony): ................................
+- Status: zakończony funkcjonalnie; testy opisane poniżej.
 - Data aktualizacji: ................................
 - Co zostało zrobione: ................................
 - Utworzone lub zmienione pliki i ich zawartość: ................................
@@ -184,7 +159,7 @@ Na koniec etapu:
 
 Nasz zapis postępu:
 
-- Status (niezaczęty / w trakcie / zakończony): ................................
+- Status: zakończony funkcjonalnie; testy opisane poniżej.
 - Data aktualizacji: ................................
 - Co zostało zrobione: ................................
 - Utworzone lub zmienione pliki i ich zawartość: ................................
@@ -197,11 +172,11 @@ Nasz zapis postępu:
 
 Co robimy:
 
-- [ ] Rozbudowujemy kod z etapu 2 według punktów 3.1–3.5 planu; dodajemy Strategia { FIFO, FEE }.
-- [ ] W FEE używamy priority_queue: fee, nadejście, potem ID.
-- [ ] Losujemy tylko wolnych walidatorów według ich stake.
-- [ ] Generujemy N losowań z seed; każdy przebieg ma świeży stan.
-- [ ] Uruchamiamy oba warianty; sprawdzamy remisy i powtarzalność.
+- [x] Rozbudowujemy kod z etapu 2 według punktów 3.1–3.5 planu; dodajemy Strategia { FIFO, FEE }.
+- [x] W FEE używamy priority_queue: fee, nadejście, potem ID.
+- [x] Losujemy tylko wolnych walidatorów według ich stake.
+- [x] Generujemy N losowań z seed; każdy przebieg ma świeży stan.
+- [x] Uruchamiamy oba warianty; sprawdzamy remisy i powtarzalność.
 
 Na koniec etapu:
 
@@ -215,7 +190,7 @@ Na koniec etapu:
 
 Nasz zapis postępu:
 
-- Status (niezaczęty / w trakcie / zakończony): ................................
+- Status: zakończony; wyniki prób poniżej.
 - Data aktualizacji: ................................
 - Co zostało zrobione: ................................
 - Utworzone lub zmienione pliki i ich zawartość: ................................
@@ -223,6 +198,13 @@ Nasz zapis postępu:
 - Oczekiwany wynik i otrzymany wynik: ................................
 - Co wymaga poprawy: ................................
 - Następny krok: ................................
+
+#### Wyniki weryfikacji etapów 2–3 — 26.10.2026
+
+- Zaimplementowano dwa niezależne przebiegi FIFO i FEE oraz wybór wolnego walidatora proporcjonalnie do stake, ze wspólną listą losowań.
+- Przykład kontrolny: FIFO 1,2,3 i FEE 2,3,1; trzy wyniki na strategię.
+- Sprawdzono remisy, dwóch walidatorów, brak nakładających się zadań, terminowość, powtarzalność, puste wejście i błędne pliki. Testy: `python tests/test_etap3.py`.
+- Następny etap: analiza złożoności; statystyki zbiorcze i eksperymenty dopiero w etapie 5.
 
 ### Etap 4. Liczymy złożoność
 

@@ -1,4 +1,22 @@
-3
-1 0 2 1 10
-2 0 2 9 10
-3 0 2 4 10
+# Czas jest liczony w krokach symulacji.
+# Kazda sekcja opisuje jedna transakcje.
+[transakcja]
+id = 1
+nadejscie = 0
+czas_wykonania = 2
+fee = 1
+deadline = 10
+
+[transakcja]
+id = 2
+nadejscie = 0
+czas_wykonania = 2
+fee = 9
+deadline = 10
+
+[transakcja]
+id = 3
+nadejscie = 0
+czas_wykonania = 2
+fee = 4
+deadline = 10

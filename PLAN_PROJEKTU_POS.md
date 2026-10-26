@@ -4,6 +4,46 @@ Mamy przygotowany schemat działania i diagram klas. Przygotowujemy opis zasad, 
 
 Przy każdym kroku zapisujemy działania i oczekiwany wynik. Odhaczamy kroki po sprawdzeniu wyniku. Na koniec spotkania notujemy jedną rzecz, od której zaczniemy następnym razem.
 
+## Aktualizacja formatu plików — etap 3
+
+Od etapu 3 używamy czytelnych plików tekstowych inspirowanych konfiguracją systemd: sekcje `[nazwa]`, pola `nazwa = wartość` oraz komentarze zaczynające się od `#` lub `;`. To uproszczony format projektu, a nie pełny parser systemd. Puste wiersze i komentarze są pomijane, również po wartości. Nie używamy już liczby rekordów w nagłówku: liczymy sekcje. Stare przykłady samych liczb oraz kod parsera i zapisu w punktach 1, 2.3 i 2.5 poniżej zachowano jako historyczne instrukcje etapu 2 — w aktualnej wersji zastępują je zasady opisane tutaj i kod `Pliki.cpp`. Nie kopiuj ich jako aktualnego formatu. Pozostałe zasady algorytmów pozostają bez zmian.
+
+### Aktualna konfiguracja
+
+`konfiguracja.txt` ma jedną sekcję `[symulacja]` z polem `ziarno` oraz jedną lub więcej sekcji `[walidator]` z polami `id` i `stake`:
+
+```ini
+[symulacja]
+ziarno = 12345
+[walidator]
+id = 1
+stake = 10
+```
+
+`zgloszenia.txt` zawiera zero lub więcej sekcji `[transakcja]`; każda ma pięć nazwanych pól:
+
+```ini
+[transakcja]
+id = 1
+nadejscie = 0
+czas_wykonania = 2
+fee = 1
+deadline = 10
+```
+
+Program sprawdza wymagane pola, zakresy, nieznane lub powtórzone nazwy, powtórzone ID i nieznane sekcje. Błąd podaje plik i numer wiersza. Pusta lista transakcji to pusty plik lub same komentarze. Starszy format liczbowy nie jest obsługiwany. Walidatorów i transakcje sortujemy jak w pierwotnym planie.
+
+### Aktualny zapis wyników
+
+`wyniki_fifo.txt` i `wyniki_fee.txt` zawierają po jednej sekcji `[wynik]` na zakończoną transakcję. Każda sekcja podaje `id_transakcji`, `id_walidatora`, `nadejscie`, `start`, `koniec`, `oczekiwanie`, `deadline`, `opoznienie` i `terminowo = tak/nie`. Sekcje są w kolejności zakończenia; przy jednoczesnym zakończeniu kolejność wynika z ID walidatora, więc nie musi być kolejnością przydziałów. Przy pustym wejściu zostaje komentarz bez sekcji wyników. Podsumowanie zbiorcze nadal należy do etapu 5. `oczekiwane_wyniki.txt` opisuje ręcznie policzony przykład nazwanymi polami.
+
+### Sprawdzenie etapu 3
+
+- Kompilujemy zgodnie z README i uruchamiamy `python tests/test_etap3.py`.
+- Sprawdzamy FIFO 1,2,3 i FEE 2,3,1, remisy, dwa walidatory, brak nakładania pracy, powtarzalność, puste wejście i odrzucanie błędnych danych.
+- Oba przebiegi dostają tę samą listę N losowań; każda udana decyzja zużywa jedno losowanie, a zajęci walidatorzy nie biorą udziału.
+- Wypełniamy zapis postępu i wyników w `opis_projektu.md`.
+
 ## Co budujemy
 
 Użytkownik wysyła transakcję. Transakcja czeka w kolejce, aż zwolni się walidator. Walidator wykonuje jedno zadanie naraz. Porównujemy dwie kolejki: według kolejności nadejścia i według opłaty.

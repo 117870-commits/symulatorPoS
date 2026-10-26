@@ -1,3 +1,34 @@
-1 1 0 0 2 0 10 0 1
-2 1 0 2 4 2 10 0 1
-3 1 0 4 6 4 10 0 1
+# Wyniki w kolejnosci zakonczenia. Czas jest liczony w krokach.
+
+[wynik]
+id_transakcji = 1
+id_walidatora = 1
+nadejscie = 0
+start = 0
+koniec = 2
+oczekiwanie = 0
+deadline = 10
+opoznienie = 0
+terminowo = tak
+
+[wynik]
+id_transakcji = 2
+id_walidatora = 1
+nadejscie = 0
+start = 2
+koniec = 4
+oczekiwanie = 2
+deadline = 10
+opoznienie = 0
+terminowo = tak
+
+[wynik]
+id_transakcji = 3
+id_walidatora = 1
+nadejscie = 0
+start = 4
+koniec = 6
+oczekiwanie = 4
+deadline = 10
+opoznienie = 0
+terminowo = tak
