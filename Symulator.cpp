@@ -1,27 +1,91 @@
-#include "Pliki.hpp"
 #include "Symulator.hpp"
 
-#include <exception>
-#include <iostream>
-
-int main() {
-    try {
-        Konfiguracja konfiguracja = Pliki::wczytajKonfiguracje("konfiguracja.txt");
-        std::vector<Transakcja> transakcje = Pliki::wczytajTransakcje("zgloszenia.txt");
-
-        Symulator fifo(konfiguracja, transakcje, Strategia::FIFO);
-        std::vector<WynikTransakcji> wynikiFifo = fifo.uruchom();
-        Pliki::zapiszWyniki("wyniki_fifo.txt", wynikiFifo);
-        std::cout << "Zapisano wyniki_fifo.txt\n";
-
-        Symulator fee(konfiguracja, transakcje, Strategia::FEE);
-        std::vector<WynikTransakcji> wynikiFee = fee.uruchom();
-        Pliki::zapiszWyniki("wyniki_fee.txt", wynikiFee);
-        std::cout << "Zapisano wyniki_fee.txt\n";
-
-        return 0;
-    } catch (const std::exception& blad) {
-        std::cerr << "Blad: " << blad.what() << '\n';
-        return 1;
+Symulator::Symulator(const Konfiguracja& konfiguracja,
+                     const std::vector<Transakcja>& wejscie)
+    : transakcje(wejscie) {
+    for (const DaneWalidatora& dane : konfiguracja.walidatorzy) {
+        walidatorzy.push_back(Walidator(dane));
     }
+}
+
+void Symulator::dodajNadejscia() {
+    while (nastepnaTransakcja < transakcje.size()
+           && transakcje[nastepnaTransakcja].nadejscie == czas) {
+        fifo.push(transakcje[nastepnaTransakcja]);
+        ++nastepnaTransakcja;
+    }
+}
+
+bool Symulator::kolejkaPusta() const {
+    return fifo.empty();
+}
+
+Transakcja Symulator::pobierzTransakcje() {
+    Transakcja transakcja = fifo.front();
+    fifo.pop();
+    return transakcja;
+}
+
+int Symulator::wybierzWalidatora() const {
+    for (std::size_t i = 0; i < walidatorzy.size(); ++i) {
+        if (walidatorzy[i].czyWolny()) {
+            return static_cast<int>(i);
+        }
+    }
+    return -1;
+}
+
+void Symulator::przydzielZadania() {
+    while (!kolejkaPusta()) {
+        int index = wybierzWalidatora();
+        if (index == -1) {
+            break;
+        }
+
+        Transakcja transakcja = pobierzTransakcje();
+        walidatorzy[index].rozpocznij(transakcja, czas);
+    }
+}
+
+void Symulator::sprawdzZakonczenia() {
+    for (Walidator& walidator : walidatorzy) {
+        if (walidator.czyKonczy(czas)) {
+            WynikTransakcji wynik = walidator.zakoncz();
+            wyniki.push_back(wynik);
+        }
+    }
+}
+
+bool Symulator::czyPozostalaPraca() const {
+    if (nastepnaTransakcja < transakcje.size() || !kolejkaPusta()) {
+        return true;
+    }
+
+    for (const Walidator& walidator : walidatorzy) {
+        if (!walidator.czyWolny()) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+std::vector<WynikTransakcji> Symulator::uruchom() {
+    while (true) {
+        dodajNadejscia();
+        przydzielZadania();
+
+        if (!czyPozostalaPraca()) {
+            break;
+        }
+
+        ++czas;
+        sprawdzZakonczenia();
+    }
+
+    return wyniki;
+}
+
+long long Symulator::pobierzCzasKonca() const {
+    return czas;
 }

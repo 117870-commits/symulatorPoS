@@ -1,44 +1,1584 @@
-# Plan pracy nad symulatorem PoS
-
-Mamy przygotowany schemat działania i diagram klas. Przygotowujemy opis zasad, dane testowe i program w C++.
-
-Przy każdym kroku zapisujemy działania i oczekiwany wynik. Odhaczamy kroki po sprawdzeniu wyniku. Na koniec spotkania notujemy jedną rzecz, od której zaczniemy następnym razem.
-
-## Co budujemy
-
-Użytkownik wysyła transakcję. Transakcja czeka w kolejce, aż zwolni się walidator. Walidator wykonuje jedno zadanie naraz. Porównujemy dwie kolejki: według kolejności nadejścia i według opłaty.
-
-W projekcie korzystamy z uproszczonego pomysłu PoS: większy stake daje większą szansę wyboru wykonawcy. Nie odtwarzamy całego blockchaina ani konsensusu.
-
-| Nazwa | Co oznacza u nas |
-|---|---|
-| FIFO | Najpierw obsługujemy transakcję, która wcześniej przyszła |
-| FEE | Najpierw obsługujemy oczekującą transakcję z najwyższą opłatą |
-| Stake | Liczba określająca szansę wyboru walidatora |
-| Deadline | Termin, do którego transakcja powinna skończyć obsługę |
-| Czas symulacji t | Licznik kroków: 0, 1, 2, 3… |
-
-Przy równym fee wybieramy wcześniejsze nadejście, a potem mniejsze ID. Dla FIFO transakcje z jednakowym czasem nadejścia porządkujemy po ID.
-
-Walidatorzy mają jednakową szybkość. Każdy walidator zachowuje swój stake przez cały przebieg. Walidatorzy mogą mieć różne liczby monet. Rozpoczętej pracy nie przerywamy. Spóźnioną transakcję wykonujemy do końca.
-
-## Etap 3. Dodajemy FEE i losowanie walidatora
-
-Etap 3 jest już zrealizowany i zatwierdzony w repozytorium. Dodatkowo w plikach wejściowych i wynikowych wprowadzono czytelne nagłówki z nazwami kolumn.
-
-### Zrealizowane elementy etapu 3
-
-- dodanie strategii `Strategia::FIFO` i `Strategia::FEE`
-- kolejka `std::priority_queue` z komparatorem po fee, następnie nadejściu, potem ID
-- wybór wolnego walidatora według stake i ziarna losowania
-- uruchomienie dwóch przebiegów: FIFO oraz FEE
-- zapis do `wyniki_fifo.txt` i `wyniki_fee.txt`
-- pliki tekstowe w formacie czytelnym, z nazwami kolumn i opisami
-
-### Oczekiwany rezultat etapu 3
-
-Dla danych testowych z `konfiguracja.txt` i `zgloszenia.txt` oba przebiegi pracują poprawnie, a w wynikach widać kolumny z nazwami i wartościami opisanymi wprost.
-
-### Uwaga
-
-Etap 3 jest zakończony. Etapy 4, 5 i 6 nie były wykonywane, zgodnie z prośbą ograniczenia do samego etapu 3.
+<!doctype html><html lang="pl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Plan pracy nad symulatorem PoS</title><style>body{margin:0;background:#f3f3f3;color:#111;font-family:Arial,sans-serif}main,nav{box-sizing:border-box;width:calc(100% - 32px);max-width:936px}main{margin:30px auto;background:white;padding:40px clamp(20px,5vw,58px);font-size:16px;line-height:1.5}h1{font-size:30px;line-height:1.2;margin:0 0 28px}h2{font-size:23px;margin:34px 0 12px}h3{font-size:19px;margin:24px 0 10px}p{margin:10px 0}li{margin:6px 0}.check-item{list-style:none;margin-left:-20px}.progress-note{display:inline-block;min-width:190px;max-width:100%;min-height:24px;overflow-wrap:anywhere;border-bottom:1px solid #999;background:#fff9e8;padding:2px 5px}.progress-note:focus{outline:2px solid #67809b}table{border-collapse:collapse;width:100%;margin:20px 0;font-size:14px}th,td{border:1px solid #d9d9d9;padding:10px;text-align:left;vertical-align:middle;overflow-wrap:anywhere}th{background:#e7eef3}code{font-family:Consolas,monospace;font-size:.92em}pre{padding:14px;background:#f5f5f5;font-family:Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px}nav{margin:20px auto;padding:14px clamp(20px,5vw,58px);background:#fff}button{font:inherit;padding:10px 16px;cursor:pointer;border:1px solid #999;border-radius:4px;background:#fff}nav p{font-size:14px}nav a{display:inline-block;margin:12px 18px 0 0;color:#244864}@media print{nav{display:none}body{background:white}main{margin:0;padding:0;width:100%}h2,h3{break-after:avoid}tr{break-inside:avoid}.progress-note{background:white;border:0}}.check-toggle{display:inline-block;cursor:pointer;font-size:20px;line-height:1;vertical-align:middle;padding:2px 4px}.check-toggle:focus{outline:2px solid #67809b}</style><nav><button onclick="selectDocument()">Zaznacz dokument do skopiowania</button><p id="status">Klikamy przycisk, naciskamy Ctrl+C, a potem Ctrl+V w Google Docs. Kopiujemy treść z tabelami i nagłówkami.</p><a href="#etap-1-opisujemy-zasady-i-przygotowujemy-pliki">Etap 1: opis</a><a href="#etap-2-piszemy-pierwsz-wersj-programu-z-fifo">Etap 2: piszemy FIFO</a><a href="#etap-3-dodajemy-fee-i-losowanie-walidatora">Etap 3: dodajemy FEE</a><a href="#etap-5-zbieramy-wyniki-i-piszemy-sprawozdanie">Etap 5: statystyki</a><p>Klikamy pola, aby odhaczać działania lub wpisywać postęp. Odhaczenia i notatki zachowujemy w tej przeglądarce; plik Markdown uzupełniamy osobno.</p></nav><main id="document"><h1 id="plan-pracy-nad-symulatorem-pos">Plan pracy nad symulatorem PoS</h1>
+<p>Mamy przygotowany schemat działania i diagram klas. Przygotowujemy opis zasad, dane testowe i program w C++.</p>
+<p>Przy każdym kroku zapisujemy działania i oczekiwany wynik. Odhaczamy kroki po sprawdzeniu wyniku. Na koniec spotkania notujemy jedną rzecz, od której zaczniemy następnym razem.</p>
+<h2 id="co-budujemy">Co budujemy</h2>
+<p>Użytkownik wysyła transakcję. Transakcja czeka w kolejce, aż zwolni się walidator. Walidator wykonuje jedno zadanie naraz. Porównujemy dwie kolejki: według kolejności nadejścia i według opłaty.</p>
+<p>W projekcie korzystamy z uproszczonego pomysłu PoS: większy stake daje większą szansę wyboru wykonawcy. Nie odtwarzamy całego blockchaina ani konsensusu.</p>
+<table>
+<tr><th>Nazwa</th><th>Co oznacza u nas</th></tr>
+<tr><td>FIFO</td><td>Najpierw obsługujemy transakcję, która wcześniej przyszła</td></tr>
+<tr><td>FEE</td><td>Najpierw obsługujemy oczekującą transakcję z najwyższą opłatą</td></tr>
+<tr><td>Stake</td><td>Liczba określająca szansę wyboru walidatora</td></tr>
+<tr><td>Deadline</td><td>Termin, do którego transakcja powinna skończyć obsługę</td></tr>
+<tr><td>Czas symulacji t</td><td>Licznik kroków: 0, 1, 2, 3…</td></tr>
+</table>
+<p>Przy równym fee wybieramy wcześniejsze nadejście, a potem mniejsze ID. Dla FIFO transakcje z jednakowym czasem nadejścia porządkujemy po ID.</p>
+<p>Walidatorzy mają jednakową szybkość. Każdy walidator zachowuje swój stake przez cały przebieg. Walidatorzy mogą mieć różne liczby monet. Rozpoczętej pracy nie przerywamy. Spóźnioną transakcję kończymy i zaznaczamy opóźnienie w wyniku.</p>
+<h2 id="jak-korzystamy-z-instrukcji">Jak korzystamy z instrukcji</h2>
+<p>Idziemy od etapu 1 do 6. Kod wpisujemy w tym etapie, w którym dodajemy daną funkcję programu. Każdy fragment ma od 1 do 6 linii. Pod kodem wyjaśniamy zapis C++ i jego rolę w symulatorze.</p>
+<p>Gdy piszemy „nowy plik”, tworzymy go na zajęciach. Gdy piszemy „dopisujemy”, dodajemy tylko pokazane linie w podanym miejscu. Gdy piszemy „zastępujemy funkcję”, usuwamy starą definicję od jej nazwy do zamykającej klamry i wpisujemy nową. Nie zostawiamy dwóch definicji tej samej metody. Podczas składania otwartej funkcji kilka fragmentów może jeszcze się nie kompilować; kompilujemy po zakończeniu wskazanego przystanku.</p>
+<p>Teraz korzystamy z tej instrukcji; pliki C++ tworzymy sami później na lekcjach. README, wyniki programu i materiały do oddania również tworzymy dopiero w odpowiednich etapach.</p>
+<table>
+<tr><th>Etap</th><th>Co dopisujemy w programie</th><th>Co działa na końcu</th></tr>
+<tr><td>1</td><td>Opis i wejście, bez kodu C++</td><td>Mamy zasady i ręcznie policzony przykład</td></tr>
+<tr><td>2</td><td>Dane, Walidator, Pliki, Symulator i main</td><td>Wczytujemy dane, obsługujemy FIFO przez pierwszego wolnego walidatora, zapisujemy wyniki</td></tr>
+<tr><td>3</td><td>Strategia, priority_queue, komparator i losowanie stake</td><td>Porównujemy FIFO oraz FEE z tymi samymi losowaniami</td></tr>
+<tr><td>4</td><td>Opis kosztów, bez nowej funkcji programu</td><td>Uzasadniamy czas działania i pamięć</td></tr>
+<tr><td>5</td><td>Podsumowanie i Statystyki; rozszerzamy zapis i main</td><td>Zapisujemy pomiary, robimy eksperymenty i raport</td></tr>
+<tr><td>6</td><td>Dokumenty do oddania, bez nowej funkcji programu</td><td>Mamy komplet plików i przećwiczony pokaz</td></tr>
+</table>
+<p>Docelowo mamy dziesięć plików kodu. W etapie 2 tworzymy osiem: Dane.hpp, Walidator.hpp/.cpp, Pliki.hpp/.cpp, Symulator.hpp/.cpp i main.cpp. W etapie 5 dokładamy Statystyki.hpp/.cpp. W etapie 3 rozbudowujemy istniejące pliki.</p>
+<h2 id="podstawy-zapisu-c-z-kt-rych-korzystamy">Podstawy zapisu C++, z których korzystamy</h2>
+<table>
+<tr><th>Zapis</th><th>Jak go czytamy</th></tr>
+<tr><td><code>int</code>, <code>long long</code>, <code>double</code>, <code>bool</code></td><td>Liczba całkowita, większa liczba całkowita, liczba z ułamkiem, true/false</td></tr>
+<tr><td><code>std::</code></td><td>Korzystamy z nazw ze standardowej biblioteki C++</td></tr>
+<tr><td><code>.hpp</code> i <code>.cpp</code></td><td>W nagłówku deklarujemy dostępne dane i metody; w .cpp definiujemy działanie metod</td></tr>
+<tr><td><code>struct</code> i <code>class</code></td><td>Rekord danych oraz obiekt z metodami; pola struct są domyślnie publiczne, class prywatne</td></tr>
+<tr><td><code>void</code></td><td>Funkcja niczego nie zwraca</td></tr>
+<tr><td><code>const T&amp;</code></td><td>Odczytujemy istniejący obiekt T bez kopiowania i zmieniania</td></tr>
+<tr><td><code>metoda() const</code></td><td>Metoda odczytuje obiekt i nie zmienia jego pól</td></tr>
+<tr><td><code>static</code> przy metodzie</td><td>Wywołujemy np. Pliki::wczytajTransakcje bez tworzenia obiektu Pliki</td></tr>
+<tr><td><code>vector&lt;T&gt;</code> i <code>size_t</code></td><td>Lista elementów typu T oraz typ do rozmiarów i indeksów list</td></tr>
+<tr><td><code>if</code>, <code>while</code>, <code>for</code></td><td>Warunek, powtarzanie dopóki warunek jest prawdziwy, przejście przez listę lub zakres</td></tr>
+<tr><td><code>&amp;&amp;</code>, „lub”, <code>!</code>, <code>==</code>, <code>!=</code></td><td>I, lub, nie, równe, różne; pojedyncze = przypisuje wartość</td></tr>
+<tr><td><code>return</code>, <code>break</code>, <code>++</code></td><td>Oddajemy wynik funkcji, kończymy pętlę, zwiększamy liczbę o 1</td></tr>
+</table>
+<p>Przykłady kodu wpisujemy bez komentarzy. Objaśnienia czytamy pod fragmentami. Przy nowym pliku .hpp dodajemy pragma once; do polecenia kompilacji wpisujemy pliki .cpp, ponieważ kompilator wczytuje nagłówki przez include.</p>
+<p>Zapis <code>||</code> czytamy jako „lub”, a <code>&amp;&amp;</code> jako „i”. W <code>auto wiersz = wczytajWiersz(...)</code> nie wpisujemy nazwy typu ręcznie: kompilator ustala ją z wyniku funkcji. Przez <code>lista.size()</code> odczytujemy liczbę elementów, a <code>lista.empty()</code> sprawdzamy, czy jest pusta. Indeks pierwszego elementu wynosi 0.</p>
+<h2 id="etap-1-opisujemy-zasady-i-przygotowujemy-pliki">Etap 1. Opisujemy zasady i przygotowujemy pliki</h2>
+<p>Zadanie 1 z polecenia prowadzącego. Na ten etap rezerwujemy około 3–4 godzin pracy w parze.</p>
+<h3 id="1-1-zapisujemy-opis-projektu">1.1. Zapisujemy opis projektu</h3>
+<ul>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-1" aria-checked="false" aria-label="Tworzymy `opis_projektu.md`.">☐</span> Tworzymy <code>opis_projektu.md</code>.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-2" aria-checked="false" aria-label="Piszemy, co robi transakcja, kolejka i walidator.">☐</span> Piszemy, co robi transakcja, kolejka i walidator.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-3" aria-checked="false" aria-label="Zapisujemy zasady z sekcji „Co budujemy”.">☐</span> Zapisujemy zasady z sekcji „Co budujemy”.</li>
+</ul>
+<p><strong>Wynik:</strong> krótki opis, do którego możemy zajrzeć podczas pisania kodu.</p>
+<h3 id="1-2-ustalamy-dane-transakcji-i-walidatora">1.2. Ustalamy dane transakcji i walidatora</h3>
+<ul>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-4" aria-checked="false" aria-label="Dla transakcji zapisujemy: ID, nadejście, czas wykonania, fee i deadline.">☐</span> Dla transakcji zapisujemy: ID, nadejście, czas wykonania, fee i deadline.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-5" aria-checked="false" aria-label="Dla walidatora zapisujemy: ID, stake, wykonywane zadanie i czas jego zakończenia.">☐</span> Dla walidatora zapisujemy: ID, stake, wykonywane zadanie i czas jego zakończenia.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-6" aria-checked="false" aria-label="Oglądamy diagram klas. Dopisujemy do opisu po jednym zdaniu o zadaniu każdej klasy.">☐</span> Oglądamy diagram klas. Dopisujemy do opisu po jednym zdaniu o zadaniu każdej klasy.</li>
+</ul>
+<p><strong>Wynik:</strong> część „Dane i klasy” w <code>opis_projektu.md</code>. Wiemy, co przechowujemy w programie.</p>
+<h3 id="1-3-ustalamy-format-wej-cia">1.3. Ustalamy format wejścia</h3>
+<ul>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-7" aria-checked="false" aria-label="Tworzymy `konfiguracja.txt` i `zgloszenia.txt`.">☐</span> Tworzymy <code>konfiguracja.txt</code> i <code>zgloszenia.txt</code>.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-8" aria-checked="false" aria-label="Korzystamy z przykładów w części „Pliki wejściowe i przykład kontrolny” na końcu planu.">☐</span> Korzystamy z przykładów w części „Pliki wejściowe i przykład kontrolny” na końcu planu.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-9" aria-checked="false" aria-label="W opisie wyjaśniamy znaczenie kolumn.">☐</span> W opisie wyjaśniamy znaczenie kolumn.</li>
+</ul>
+<p><strong>Wynik:</strong> dwa pliki, które później wczytamy w C++.</p>
+<h3 id="1-4-liczymy-ma-y-przyk-ad-na-kartce">1.4. Liczymy mały przykład na kartce</h3>
+<ul>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-10" aria-checked="false" aria-label="Przyjmujemy jednego walidatora i trzy transakcje przychodzące w czasie 0.">☐</span> Przyjmujemy jednego walidatora i trzy transakcje przychodzące w czasie 0.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-11" aria-checked="false" aria-label="Nadajemy im fee: 1, 9, 4. Niech każda trwa 2 jednostki czasu.">☐</span> Nadajemy im fee: 1, 9, 4. Niech każda trwa 2 jednostki czasu.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-12" aria-checked="false" aria-label="Zapisujemy kolejność i czasy startu/końca dla FIFO oraz FEE.">☐</span> Zapisujemy kolejność i czasy startu/końca dla FIFO oraz FEE.</li>
+</ul>
+<p><strong>Wynik:</strong> <code>oczekiwane_wyniki.txt</code>, z którym porównamy program. Przykład podaliśmy na końcu planu.</p>
+<h3 id="1-5-sprawdzamy-opis-we-dwoje">1.5. Sprawdzamy opis we dwoje</h3>
+<ul>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-13" aria-checked="false" aria-label="Jedna osoba wyjaśnia przykład drugiej.">☐</span> Jedna osoba wyjaśnia przykład drugiej.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-14" aria-checked="false" aria-label="Uzupełniamy zasady, o które trzeba było dopytać.">☐</span> Uzupełniamy zasady, o które trzeba było dopytać.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-15" aria-checked="false" aria-label="Ustalamy, kto zaczyna od plików i FIFO, a kto od statystyk i kolejki FEE.">☐</span> Ustalamy, kto zaczyna od plików i FIFO, a kto od statystyk i kolejki FEE.</li>
+</ul>
+<p><strong>Na koniec etapu:</strong> opis, dwa pliki wejściowe i wyniki policzone na kartce.</p>
+<h2 id="etap-2-piszemy-pierwsz-wersj-programu-z-fifo">Etap 2. Piszemy pierwszą wersję programu z FIFO</h2>
+<p>Budujemy pierwszy działający program. Czytamy pliki, wpuszczamy transakcje zgodnie z czasem nadejścia, obsługujemy FIFO i zapisujemy wyniki. Przydzielamy pierwszego wolnego walidatora według ID. FEE i losowanie dopisujemy w etapie 3, a zbiorcze statystyki w etapie 5.</p>
+<h3 id="2-1-uruchamiamy-program-c">2.1. Uruchamiamy program C++</h3>
+<h4 id="2-1-1-zaczynamy-od-main">2.1.1. Zaczynamy od main</h4>
+<p><strong>Plik:</strong> <code>main.cpp</code>. <strong>Co robimy:</strong> nowy plik.</p>
+<p><code>main</code> jest miejscem rozpoczęcia programu. Na razie sprawdzamy kompilator i wypisujemy jeden komunikat.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>#include &lt;iostream&gt;
+int main() {
+    std::cout &lt;&lt; &quot;Symulator transakcji\n&quot;;
+    return 0;
+}</pre>
+<p>Przez <code>#include</code> dołączamy deklaracje, których używamy niżej. Cudzysłowów używamy przy naszych plikach, a znaków <code>&lt; &gt;</code> przy bibliotece C++. Przez <code>cout &lt;&lt;</code> wypisujemy dane na ekran. Spacje rozdzielają wartości, a <code>\n</code> kończy wiersz; <code>cerr</code> służy do komunikatów o błędach. W main przez return 0 kończymy program i oznaczamy, że zakończył się poprawnie.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<p><strong>Przystanek: pierwsze uruchomienie.</strong> Kończymy podane definicje, zapisujemy pliki i kompilujemy w folderze z kodem.</p>
+<pre>g++ -std=c++17 -Wall -Wextra -pedantic main.cpp -o symulator.exe
+.\symulator.exe</pre>
+<p><strong>Oczekiwany wynik:</strong> Widzimy <code>Symulator transakcji</code>. W README.md zapisujemy to polecenie i informację, że korzystamy z C++17. Jeśli kompilator zgłasza błąd, poprawiamy pierwszy komunikat przed następnym krokiem.</p>
+<h3 id="2-2-przygotowujemy-dane-i-wykonawc">2.2. Przygotowujemy dane i wykonawcę</h3>
+<h4 id="2-2-1-tworzymy-rekordy-danych">2.2.1. Tworzymy rekordy danych</h4>
+<p><strong>Plik:</strong> <code>Dane.hpp</code>. <strong>Co robimy:</strong> nowy plik.</p>
+<p>Tworzymy Transakcja, DaneWalidatora, Konfiguracja i WynikTransakcji. Konfiguracja zawiera listę początkowych danych wykonawców. WynikTransakcji przechowuje efekt jednej zakończonej pracy. Ziarno, fee i deadline odczytujemy już teraz, chociaż pełne porównanie strategii dodamy później. Podsumowanie dopiszemy w etapie 5.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>#pragma once</pre>
+<p>Przez <code>#pragma once</code> prosimy kompilator, żeby dołączył ten nagłówek tylko raz w danym pliku .cpp.</p>
+<p><strong>Krok 2.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>#include &lt;vector&gt;</pre>
+<p>Przez <code>#include</code> dołączamy deklaracje, których używamy niżej. Cudzysłowów używamy przy naszych plikach, a znaków <code>&lt; &gt;</code> przy bibliotece C++.</p>
+<p><strong>Krok 3.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>struct Transakcja {
+    int id = 0;
+    long long nadejscie = 0;
+    long long czasWykonania = 0;</pre>
+<p>Zaczynamy rekord <code>Transakcja</code>. Między jego klamrami wpisujemy pola, które przechowujemy razem. Tworzymy zmienną albo pole. Wartość po <code>=</code> jest wartością początkową; <code>long long</code> mieści większe liczby całkowite niż <code>int</code>, a <code>double</code> także ułamki.</p>
+<p><strong>Krok 4.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>    long long fee = 0;
+    long long deadline = 0;
+};</pre>
+<p>Tworzymy zmienną albo pole. Wartość po <code>=</code> jest wartością początkową; <code>long long</code> mieści większe liczby całkowite niż <code>int</code>, a <code>double</code> także ułamki.</p>
+<p><strong>Krok 5.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>struct DaneWalidatora {
+    int id = 0;
+    long long stake = 0;
+};</pre>
+<p>Zaczynamy rekord <code>DaneWalidatora</code>. Między jego klamrami wpisujemy pola, które przechowujemy razem. Tworzymy zmienną albo pole. Wartość po <code>=</code> jest wartością początkową; <code>long long</code> mieści większe liczby całkowite niż <code>int</code>, a <code>double</code> także ułamki.</p>
+<p><strong>Krok 6.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>struct Konfiguracja {
+    unsigned int ziarno = 0;
+    std::vector&lt;DaneWalidatora&gt; walidatorzy;
+};</pre>
+<p>Zaczynamy rekord <code>Konfiguracja</code>. Między jego klamrami wpisujemy pola, które przechowujemy razem. Tworzymy zmienną albo pole. Wartość po <code>=</code> jest wartością początkową; <code>long long</code> mieści większe liczby całkowite niż <code>int</code>, a <code>double</code> także ułamki. W <code>std::vector</code> przechowujemy listę elementów. Typ wewnątrz <code>&lt; &gt;</code> mówi, co możemy na tę listę dodawać.</p>
+<p><strong>Krok 7.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>struct WynikTransakcji {
+    int idTransakcji = 0;
+    int idWalidatora = 0;
+    long long nadejscie = 0;
+    long long start = 0;
+    long long koniec = 0;</pre>
+<p>Zaczynamy rekord <code>WynikTransakcji</code>. Między jego klamrami wpisujemy pola, które przechowujemy razem. Tworzymy zmienną albo pole. Wartość po <code>=</code> jest wartością początkową; <code>long long</code> mieści większe liczby całkowite niż <code>int</code>, a <code>double</code> także ułamki.</p>
+<p><strong>Krok 8.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>    long long oczekiwanie = 0;
+    long long deadline = 0;
+    long long opoznienie = 0;
+    bool terminowo = false;
+};</pre>
+<p>Tworzymy zmienną albo pole. Wartość po <code>=</code> jest wartością początkową; <code>long long</code> mieści większe liczby całkowite niż <code>int</code>, a <code>double</code> także ułamki.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="2-2-2-deklarujemy-klas-walidator">2.2.2. Deklarujemy klasę Walidator</h4>
+<p><strong>Plik:</strong> <code>Walidator.hpp</code>. <strong>Co robimy:</strong> nowy plik.</p>
+<p>Konstruktor tworzy wolnego wykonawcę z ID i stake. Metody pobierzId/pobierzStake/czyWolny/czyKonczy służą do odczytu. Rozpocznij zmienia stan na zajęty, a zakoncz zwraca wynik i zwalnia wykonawcę. W nagłówku podajemy nazwy, typy parametrów i zwracane wartości; ciała metod wpisujemy w .cpp.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>#pragma once</pre>
+<p>Przez <code>#pragma once</code> prosimy kompilator, żeby dołączył ten nagłówek tylko raz w danym pliku .cpp.</p>
+<p><strong>Krok 2.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>#include &quot;Dane.hpp&quot;</pre>
+<p>Przez <code>#include</code> dołączamy deklaracje, których używamy niżej. Cudzysłowów używamy przy naszych plikach, a znaków <code>&lt; &gt;</code> przy bibliotece C++.</p>
+<p><strong>Krok 3.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>class Walidator {
+public:
+    explicit Walidator(const DaneWalidatora&amp; dane);
+    int pobierzId() const;
+    long long pobierzStake() const;
+    bool czyWolny() const;</pre>
+<p>Zaczynamy klasę. Łączymy w niej dane obiektu z metodami, przez które z niego korzystamy. Pod <code>public:</code> wpisujemy metody dostępne z innych części programu. Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. Przy <code>explicit</code> tworzymy walidatora przez jawne wywołanie konstruktora, np. <code>Walidator(dane)</code>.</p>
+<p><strong>Krok 4.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>    bool czyKonczy(long long czas) const;
+    void rozpocznij(const Transakcja&amp; transakcja, long long czas);
+    WynikTransakcji zakoncz();</pre>
+<p>Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania.</p>
+<p><strong>Krok 5.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>private:
+    int id;
+    long long stake;
+    bool zajety = false;
+    Transakcja aktualna;
+    long long start = 0;</pre>
+<p>Pod <code>private:</code> trzymamy stan obiektu. Zmieniamy go przez metody, żeby nie nadpisać go przypadkiem w main. Tworzymy zmienną albo pole. Wartość po <code>=</code> jest wartością początkową; <code>long long</code> mieści większe liczby całkowite niż <code>int</code>, a <code>double</code> także ułamki.</p>
+<p><strong>Krok 6.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>    long long koniec = 0;
+};</pre>
+<p>Tworzymy zmienną albo pole. Wartość po <code>=</code> jest wartością początkową; <code>long long</code> mieści większe liczby całkowite niż <code>int</code>, a <code>double</code> także ułamki.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="2-2-3-definiujemy-metody-walidator">2.2.3. Definiujemy metody Walidator</h4>
+<p><strong>Plik:</strong> <code>Walidator.cpp</code>. <strong>Co robimy:</strong> nowy plik.</p>
+<p>Zapis Walidator::nazwa oznacza metodę tej klasy. Sam Walidator::Walidator to konstruktor. W rozpocznij obliczamy koniec = start + czasWykonania. W zakoncz tworzymy wynik pojedynczej transakcji, w tym jej oczekiwanie i terminowość. Zbiorcze pomiary całego przebiegu dodamy dopiero w etapie 5.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>#include &quot;Walidator.hpp&quot;</pre>
+<p>Przez <code>#include</code> dołączamy deklaracje, których używamy niżej. Cudzysłowów używamy przy naszych plikach, a znaków <code>&lt; &gt;</code> przy bibliotece C++.</p>
+<p><strong>Krok 2.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>#include &lt;algorithm&gt;
+#include &lt;limits&gt;
+#include &lt;stdexcept&gt;</pre>
+<p>Przez <code>#include</code> dołączamy deklaracje, których używamy niżej. Cudzysłowów używamy przy naszych plikach, a znaków <code>&lt; &gt;</code> przy bibliotece C++.</p>
+<p><strong>Krok 3.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>Walidator::Walidator(const DaneWalidatora&amp; dane)
+    : id(dane.id), stake(dane.stake) {
+}</pre>
+<p>Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. Po dwukropku ustawiamy pola obiektu z danych wejściowych. To lista inicjalizacyjna konstruktora.</p>
+<p><strong>Krok 4.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>int Walidator::pobierzId() const {
+    return id;
+}</pre>
+<p>Przez return oddajemy wartość wskazanego pola osobie wywołującej metodę. Metoda z const na końcu nagłówka odczytuje stan, bez zmieniania go.</p>
+<p><strong>Krok 5.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>long long Walidator::pobierzStake() const {
+    return stake;
+}</pre>
+<p>Przez return oddajemy wartość wskazanego pola osobie wywołującej metodę. Metoda z const na końcu nagłówka odczytuje stan, bez zmieniania go.</p>
+<p><strong>Krok 6.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>bool Walidator::czyWolny() const {
+    return !zajety;
+}</pre>
+<p>Znak <code>!</code> odwraca wartość bool. Gdy zajety ma false, zwracamy true: walidator jest wolny.</p>
+<p><strong>Krok 7.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>bool Walidator::czyKonczy(long long czas) const {
+    return zajety &amp;&amp; koniec == czas;
+}</pre>
+<p>Zwracamy true tylko wtedy, gdy walidator jest zajęty i jego zadanie kończy się w podanym czasie.</p>
+<p><strong>Krok 8.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>void Walidator::rozpocznij(const Transakcja&amp; transakcja, long long czas) {
+    if (zajety) {
+        throw std::logic_error(&quot;Walidator jest zajety&quot;);
+    }
+    if (transakcja.czasWykonania &gt; std::numeric_limits&lt;long long&gt;::max() - czas) {
+        throw std::overflow_error(&quot;Czas zakonczenia przekracza zakres liczby&quot;);</pre>
+<p>Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. Przez <code>throw</code> przerywamy tę operację i przekazujemy opis błędu do <code>catch</code> w main. Nie pracujemy dalej na niepoprawnych danych. Z biblioteki odczytujemy największą dozwoloną wartość typu. Sprawdzamy zakres liczby przed konwersją albo dodaniem czasu.</p>
+<p><strong>Krok 9.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>    }
+    aktualna = transakcja;
+    start = czas;
+    koniec = czas + transakcja.czasWykonania;
+    zajety = true;
+}</pre>
+<p>Zapamiętujemy wykonywaną transakcję, czas startu i koniec równy startowi plus czas wykonania. Ustawiamy zajety na true.</p>
+<p><strong>Krok 10.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>WynikTransakcji Walidator::zakoncz() {
+    if (!zajety) {
+        throw std::logic_error(&quot;Walidator nie ma zadania&quot;);
+    }
+    WynikTransakcji wynik;
+    wynik.idTransakcji = aktualna.id;</pre>
+<p>Przez <code>throw</code> przerywamy tę operację i przekazujemy opis błędu do <code>catch</code> w main. Nie pracujemy dalej na niepoprawnych danych. Przepisujemy identyfikatory i czasy do rekordu wyniku. Nie zapisujemy go dla zadania, które jeszcze trwa.</p>
+<p><strong>Krok 11.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>    wynik.idWalidatora = id;
+    wynik.nadejscie = aktualna.nadejscie;
+    wynik.start = start;
+    wynik.koniec = koniec;
+    wynik.oczekiwanie = start - aktualna.nadejscie;
+    wynik.deadline = aktualna.deadline;</pre>
+<p>Liczymy oczekiwanie jako start minus nadejście. Dla nadejścia 0 i startu 0 otrzymujemy 0, choć sama praca może trwać kilka kroków.</p>
+<p><strong>Krok 12.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>    wynik.opoznienie = std::max(0LL, koniec - aktualna.deadline);
+    wynik.terminowo = koniec &lt;= aktualna.deadline;
+    zajety = false;
+    return wynik;
+}</pre>
+<p>Liczymy spóźnienie, wybierając większą wartość: 0 lub koniec minus deadline. <code>0LL</code> oznacza zero typu long long. Porównaniem <code>&lt;=</code> zaliczamy także zakończenie dokładnie w deadline jako terminowe.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="2-2-4-sprawdzamy-jednego-wykonawc">2.2.4. Sprawdzamy jednego wykonawcę</h4>
+<p><strong>Plik:</strong> <code>main.cpp</code>. <strong>Co robimy:</strong> zastępujemy cały dotychczasowy main.cpp testem.</p>
+<p>Tworzymy jeden obiekt i jedno zadanie. Zapis {1, 0, 2, 1, 10} wypełnia pola Transakcja w kolejności z Dane.hpp. To test klasy: wywołujemy zakoncz po potwierdzeniu czyKonczy(2). Upływ czasu zbudujemy w symulatorze.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>#include &quot;Walidator.hpp&quot;
+#include &lt;iostream&gt;
+int main() {
+    Walidator w(DaneWalidatora{1, 10});
+    Transakcja t{1, 0, 2, 1, 10};
+    w.rozpocznij(t, 0);</pre>
+<p>Przez <code>#include</code> dołączamy deklaracje, których używamy niżej. Cudzysłowów używamy przy naszych plikach, a znaków <code>&lt; &gt;</code> przy bibliotece C++.</p>
+<p><strong>Krok 2.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>    std::cout &lt;&lt; w.czyWolny() &lt;&lt; &#x27; &#x27; &lt;&lt; w.czyKonczy(2) &lt;&lt; &#x27;\n&#x27;;
+    WynikTransakcji wynik = w.zakoncz();
+    std::cout &lt;&lt; wynik.start &lt;&lt; &#x27; &#x27; &lt;&lt; wynik.koniec &lt;&lt; &#x27; &#x27;
+              &lt;&lt; wynik.oczekiwanie &lt;&lt; &#x27; &#x27; &lt;&lt; w.czyWolny() &lt;&lt; &#x27;\n&#x27;;
+    return 0;
+}</pre>
+<p>Przez <code>cout &lt;&lt;</code> wypisujemy dane na ekran. Spacje rozdzielają wartości, a <code>\n</code> kończy wiersz; <code>cerr</code> służy do komunikatów o błędach. W main przez return 0 kończymy program i oznaczamy, że zakończył się poprawnie.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<p><strong>Przystanek: walidator.</strong> Kończymy podane definicje, zapisujemy pliki i kompilujemy w folderze z kodem.</p>
+<pre>g++ -std=c++17 -Wall -Wextra -pedantic main.cpp Walidator.cpp -o symulator.exe
+.\symulator.exe</pre>
+<p><strong>Oczekiwany wynik:</strong> Pierwszy wiersz: <code>0 1</code>, czyli zajęty i kończący w 2. Drugi: <code>0 2 0 1</code>, czyli start 0, koniec 2, oczekiwanie 0, znów wolny. Jeśli kompilator zgłasza błąd, poprawiamy pierwszy komunikat przed następnym krokiem.</p>
+<h4 id="2-2-5-deklarujemy-odczyt-i-zapis">2.2.5. Deklarujemy odczyt i zapis</h4>
+<p><strong>Plik:</strong> <code>Pliki.hpp</code>. <strong>Co robimy:</strong> nowy plik.</p>
+<p>WczytajKonfiguracje zwraca Konfiguracja. WczytajTransakcje zwraca listę Transakcja. ZapiszWyniki przyjmuje nazwę i listę wyników. ZapiszWyniki zdefiniujemy w 2.5; w 2.3 sprawdzimy najpierw sam odczyt.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>#pragma once</pre>
+<p>Przez <code>#pragma once</code> prosimy kompilator, żeby dołączył ten nagłówek tylko raz w danym pliku .cpp.</p>
+<p><strong>Krok 2.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>#include &quot;Dane.hpp&quot;</pre>
+<p>Przez <code>#include</code> dołączamy deklaracje, których używamy niżej. Cudzysłowów używamy przy naszych plikach, a znaków <code>&lt; &gt;</code> przy bibliotece C++.</p>
+<p><strong>Krok 3.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>#include &lt;string&gt;</pre>
+<p>Przez <code>#include</code> dołączamy deklaracje, których używamy niżej. Cudzysłowów używamy przy naszych plikach, a znaków <code>&lt; &gt;</code> przy bibliotece C++.</p>
+<p><strong>Krok 4.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>class Pliki {
+public:
+    static Konfiguracja wczytajKonfiguracje(const std::string&amp; nazwa);
+    static std::vector&lt;Transakcja&gt; wczytajTransakcje(const std::string&amp; nazwa);</pre>
+<p>Zaczynamy klasę. Łączymy w niej dane obiektu z metodami, przez które z niego korzystamy. Pod <code>public:</code> wpisujemy metody dostępne z innych części programu. Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. W <code>std::vector</code> przechowujemy listę elementów. Typ wewnątrz <code>&lt; &gt;</code> mówi, co możemy na tę listę dodawać.</p>
+<p><strong>Krok 5.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>    static void zapiszWyniki(const std::string&amp; nazwa,
+                            const std::vector&lt;WynikTransakcji&gt;&amp; wyniki);
+};</pre>
+<p>Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. W <code>std::vector</code> przechowujemy listę elementów. Typ wewnątrz <code>&lt; &gt;</code> mówi, co możemy na tę listę dodawać.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h3 id="2-3-wczytujemy-sprawdzamy-i-sortujemy-dane">2.3. Wczytujemy, sprawdzamy i sortujemy dane</h3>
+<h4 id="2-3-1-piszemy-odczyt-wierszy-i-rekord-w">2.3.1. Piszemy odczyt wierszy i rekordów</h4>
+<p><strong>Plik:</strong> <code>Pliki.cpp</code>. <strong>Co robimy:</strong> nowy plik.</p>
+<p>Zaczynamy od czterech pomocników. Blad zgłasza nazwę pliku, numer wiersza i przyczynę. WczytajWiersz daje nam tekst jednego wiersza jako strumień liczb. SprawdzKoniecWiersza wykrywa dodatkowe kolumny, a sprawdzKoniecPliku nadmiarowe rekordy. Potem definiujemy dwa odczyty. Sortujemy po ID, żeby sprawdzić powtórzenia; na końcu transakcje sortujemy po nadejściu i ID. Rekordy wejściowe muszą być kompletne, zanim zwrócimy listę.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>#include &quot;Pliki.hpp&quot;</pre>
+<p>Przez <code>#include</code> dołączamy deklaracje, których używamy niżej. Cudzysłowów używamy przy naszych plikach, a znaków <code>&lt; &gt;</code> przy bibliotece C++.</p>
+<p><strong>Krok 2.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>#include &lt;algorithm&gt;
+#include &lt;fstream&gt;
+#include &lt;limits&gt;
+#include &lt;sstream&gt;
+#include &lt;stdexcept&gt;</pre>
+<p>Przez <code>#include</code> dołączamy deklaracje, których używamy niżej. Cudzysłowów używamy przy naszych plikach, a znaków <code>&lt; &gt;</code> przy bibliotece C++.</p>
+<p><strong>Krok 3.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>namespace {
+void blad(const std::string&amp; nazwa, int numer, const std::string&amp; powod) {
+    throw std::runtime_error(nazwa + &quot; (wiersz &quot; + std::to_string(numer)
+                             + &quot;): &quot; + powod);
+}</pre>
+<p>W tej przestrzeni nazw umieszczamy pomocnicze funkcje używane tylko w Pliki.cpp. Po ostatniej z nich zamykamy przestrzeń osobną klamrą. Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. Przez <code>throw</code> przerywamy tę operację i przekazujemy opis błędu do <code>catch</code> w main. Nie pracujemy dalej na niepoprawnych danych.</p>
+<p><strong>Krok 4.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>std::istringstream wczytajWiersz(std::ifstream&amp; plik,
+                               const std::string&amp; nazwa, int numer) {
+    std::string linia;
+    if (!std::getline(plik, linia)) {
+        blad(nazwa, numer, &quot;brak wymaganego wiersza&quot;);
+    }</pre>
+<p>Używamy <code>istringstream</code>, żeby czytać liczby z jednego wiersza tekstu. Dzięki temu wykrywamy brakujące i nadmiarowe kolumny w konkretnym wierszu. Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. Odczytujemy jeden cały wiersz tekstu. Brak wymaganego wiersza traktujemy jako błąd, a nie jako pusty rekord.</p>
+<p><strong>Krok 5.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>    return std::istringstream(linia);
+}</pre>
+<p>Używamy <code>istringstream</code>, żeby czytać liczby z jednego wiersza tekstu. Dzięki temu wykrywamy brakujące i nadmiarowe kolumny w konkretnym wierszu.</p>
+<p><strong>Krok 6.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>void sprawdzKoniecWiersza(std::istringstream&amp; wiersz,
+                         const std::string&amp; nazwa, int numer) {
+    std::string nadmiar;
+    if (wiersz &gt;&gt; nadmiar) {</pre>
+<p>Używamy <code>istringstream</code>, żeby czytać liczby z jednego wiersza tekstu. Dzięki temu wykrywamy brakujące i nadmiarowe kolumny w konkretnym wierszu. Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. Operatorem <code>&gt;&gt;</code> odczytujemy kolejne wartości. Warunek <code>if (!(...))</code> wykrywa, że którejś oczekiwanej liczby nie udało się odczytać.</p>
+<p><strong>Krok 7.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>        blad(nazwa, numer, &quot;za duzo danych w wierszu&quot;);
+    }
+}</pre>
+<p>Dopisujemy tę część do rozpoczętej wcześniej definicji. Wcięcia pokazują, które instrukcje należą do tego samego bloku.</p>
+<p><strong>Krok 8.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>void sprawdzKoniecPliku(std::ifstream&amp; plik,
+                       const std::string&amp; nazwa, int numer) {
+    std::string linia;
+    while (std::getline(plik, linia)) {
+        std::istringstream wiersz(linia);
+        std::string nadmiar;</pre>
+<p>Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. Odczytujemy jeden cały wiersz tekstu. Brak wymaganego wiersza traktujemy jako błąd, a nie jako pusty rekord. Używamy <code>istringstream</code>, żeby czytać liczby z jednego wiersza tekstu. Dzięki temu wykrywamy brakujące i nadmiarowe kolumny w konkretnym wierszu.</p>
+<p><strong>Krok 9.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>        if (wiersz &gt;&gt; nadmiar) {
+            blad(nazwa, numer, &quot;nadmiarowe dane po ostatnim rekordzie&quot;);
+        }
+        ++numer;</pre>
+<p>Operatorem <code>&gt;&gt;</code> odczytujemy kolejne wartości. Warunek <code>if (!(...))</code> wykrywa, że którejś oczekiwanej liczby nie udało się odczytać.</p>
+<p><strong>Krok 10.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>    }
+}
+}</pre>
+<p>Zamykamy otwarte wcześniej bloki. Po definicji klasy lub struktury stawiamy <code>};</code>, a po ciele funkcji samo <code>}</code>.</p>
+<p><strong>Krok 11.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>Konfiguracja Pliki::wczytajKonfiguracje(const std::string&amp; nazwa) {
+    std::ifstream plik(nazwa);
+    if (!plik) {
+        throw std::runtime_error(&quot;Nie mozna otworzyc &quot; + nazwa);
+    }
+    auto naglowek = wczytajWiersz(plik, nazwa, 1);</pre>
+<p>Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. Otwieramy plik do odczytu. <code>if (!plik)</code> sprawdza, czy otwarcie się nie udało. Przez <code>throw</code> przerywamy tę operację i przekazujemy opis błędu do <code>catch</code> w main. Nie pracujemy dalej na niepoprawnych danych. Przez <code>auto</code> prosimy kompilator o ustalenie typu z wartości po znaku =. Tutaj otrzymujemy istringstream zwrócony przez wczytajWiersz.</p>
+<p><strong>Krok 12.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>    int liczba = 0;
+    long long ziarno = 0;
+    if (!(naglowek &gt;&gt; liczba &gt;&gt; ziarno)) {
+        blad(nazwa, 1, &quot;oczekujemy liczby walidatorow i ziarna&quot;);
+    }
+    sprawdzKoniecWiersza(naglowek, nazwa, 1);</pre>
+<p>Tworzymy zmienną albo pole. Wartość po <code>=</code> jest wartością początkową; <code>long long</code> mieści większe liczby całkowite niż <code>int</code>, a <code>double</code> także ułamki. Operatorem <code>&gt;&gt;</code> odczytujemy kolejne wartości. Warunek <code>if (!(...))</code> wykrywa, że którejś oczekiwanej liczby nie udało się odczytać.</p>
+<p><strong>Krok 13.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>    if (liczba &lt; 1 || ziarno &lt; 0
+        || static_cast&lt;unsigned long long&gt;(ziarno)
+           &gt; std::numeric_limits&lt;unsigned int&gt;::max()) {
+        blad(nazwa, 1, &quot;nieprawidlowa liczba walidatorow lub ziarno&quot;);
+    }
+    Konfiguracja konfiguracja;</pre>
+<p>Zapis <code>||</code> czytamy jako „lub”: wystarczy jeden prawdziwy warunek. Przy sprawdzaniu błędów odrzucamy rekord, gdy choć jedno ograniczenie zostało złamane. Przez <code>static_cast&lt;typ&gt;</code> zapisujemy jawną konwersję liczby na podany typ. Przykładowo zamieniamy indeks <code>size_t</code> na zwracany <code>int</code>. Z biblioteki odczytujemy największą dozwoloną wartość typu. Sprawdzamy zakres liczby przed konwersją albo dodaniem czasu.</p>
+<p><strong>Krok 14.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>    konfiguracja.ziarno = static_cast&lt;unsigned int&gt;(ziarno);
+    for (int i = 0; i &lt; liczba; ++i) {
+        auto wiersz = wczytajWiersz(plik, nazwa, i + 2);
+        DaneWalidatora dane;
+        if (!(wiersz &gt;&gt; dane.id &gt;&gt; dane.stake)) {
+            blad(nazwa, i + 2, &quot;oczekujemy ID i stake&quot;);</pre>
+<p>Przez <code>static_cast&lt;typ&gt;</code> zapisujemy jawną konwersję liczby na podany typ. Przykładowo zamieniamy indeks <code>size_t</code> na zwracany <code>int</code>. Powtarzamy odczyt tyle razy, ile rekordów zapowiedziano w pierwszym wierszu. Numer wiersza danych to <code>i + 2</code>. Przez <code>auto</code> prosimy kompilator o ustalenie typu z wartości po znaku =. Tutaj otrzymujemy istringstream zwrócony przez wczytajWiersz. Operatorem <code>&gt;&gt;</code> odczytujemy kolejne wartości. Warunek <code>if (!(...))</code> wykrywa, że którejś oczekiwanej liczby nie udało się odczytać.</p>
+<p><strong>Krok 15.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>        }
+        sprawdzKoniecWiersza(wiersz, nazwa, i + 2);
+        if (dane.id &lt;= 0 || dane.stake &lt;= 0) {
+            blad(nazwa, i + 2, &quot;ID i stake musza byc dodatnie&quot;);
+        }
+        konfiguracja.walidatorzy.push_back(dane);</pre>
+<p>Zapis <code>||</code> czytamy jako „lub”: wystarczy jeden prawdziwy warunek. Przy sprawdzaniu błędów odrzucamy rekord, gdy choć jedno ograniczenie zostało złamane. Przez <code>push_back</code> dopisujemy element na koniec listy.</p>
+<p><strong>Krok 16.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>    }
+    sprawdzKoniecPliku(plik, nazwa, liczba + 2);
+    std::sort(konfiguracja.walidatorzy.begin(), konfiguracja.walidatorzy.end(),
+              [](const DaneWalidatora&amp; a, const DaneWalidatora&amp; b) {
+                  return a.id &lt; b.id;
+              });</pre>
+<p>Sortujemy zakres od <code>begin()</code> do <code>end()</code>. W następnych liniach podajemy regułę, która mówi, kiedy element a ma być przed b. Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. Zapis <code>[](...) { ... }</code> to krótka funkcja, czyli lambda. Tu porównujemy dwa rekordy bez tworzenia osobnej nazwanej funkcji.</p>
+<p><strong>Krok 17.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>    for (std::size_t i = 1; i &lt; konfiguracja.walidatorzy.size(); ++i) {
+        if (konfiguracja.walidatorzy[i - 1].id == konfiguracja.walidatorzy[i].id) {
+            throw std::runtime_error(nazwa + &quot;: powtorzone ID walidatora&quot;);
+        }</pre>
+<p>Zaczynamy od indeksu 1, żeby móc porównać rekord z poprzednim. Po sortowaniu jednakowe ID będą obok siebie. Przez <code>throw</code> przerywamy tę operację i przekazujemy opis błędu do <code>catch</code> w main. Nie pracujemy dalej na niepoprawnych danych.</p>
+<p><strong>Krok 18.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>    }
+    return konfiguracja;
+}</pre>
+<p>Dopisujemy tę część do rozpoczętej wcześniej definicji. Wcięcia pokazują, które instrukcje należą do tego samego bloku.</p>
+<p><strong>Krok 19.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>std::vector&lt;Transakcja&gt; Pliki::wczytajTransakcje(const std::string&amp; nazwa) {
+    std::ifstream plik(nazwa);
+    if (!plik) {
+        throw std::runtime_error(&quot;Nie mozna otworzyc &quot; + nazwa);
+    }
+    auto naglowek = wczytajWiersz(plik, nazwa, 1);</pre>
+<p>Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. W <code>std::vector</code> przechowujemy listę elementów. Typ wewnątrz <code>&lt; &gt;</code> mówi, co możemy na tę listę dodawać. Otwieramy plik do odczytu. <code>if (!plik)</code> sprawdza, czy otwarcie się nie udało. Przez <code>throw</code> przerywamy tę operację i przekazujemy opis błędu do <code>catch</code> w main. Nie pracujemy dalej na niepoprawnych danych.</p>
+<p><strong>Krok 20.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>    int liczba = 0;
+    if (!(naglowek &gt;&gt; liczba)) {
+        blad(nazwa, 1, &quot;oczekujemy liczby transakcji&quot;);
+    }
+    sprawdzKoniecWiersza(naglowek, nazwa, 1);
+    if (liczba &lt; 0) {</pre>
+<p>Tworzymy zmienną albo pole. Wartość po <code>=</code> jest wartością początkową; <code>long long</code> mieści większe liczby całkowite niż <code>int</code>, a <code>double</code> także ułamki. Operatorem <code>&gt;&gt;</code> odczytujemy kolejne wartości. Warunek <code>if (!(...))</code> wykrywa, że którejś oczekiwanej liczby nie udało się odczytać.</p>
+<p><strong>Krok 21.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>        blad(nazwa, 1, &quot;liczba transakcji nie moze byc ujemna&quot;);
+    }
+    std::vector&lt;Transakcja&gt; transakcje;
+    for (int i = 0; i &lt; liczba; ++i) {
+        auto wiersz = wczytajWiersz(plik, nazwa, i + 2);
+        Transakcja transakcja;</pre>
+<p>W <code>std::vector</code> przechowujemy listę elementów. Typ wewnątrz <code>&lt; &gt;</code> mówi, co możemy na tę listę dodawać. Powtarzamy odczyt tyle razy, ile rekordów zapowiedziano w pierwszym wierszu. Numer wiersza danych to <code>i + 2</code>. Przez <code>auto</code> prosimy kompilator o ustalenie typu z wartości po znaku =. Tutaj otrzymujemy istringstream zwrócony przez wczytajWiersz.</p>
+<p><strong>Krok 22.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>        if (!(wiersz &gt;&gt; transakcja.id &gt;&gt; transakcja.nadejscie
+              &gt;&gt; transakcja.czasWykonania &gt;&gt; transakcja.fee &gt;&gt; transakcja.deadline)) {
+            blad(nazwa, i + 2, &quot;oczekujemy pieciu liczb transakcji&quot;);
+        }
+        sprawdzKoniecWiersza(wiersz, nazwa, i + 2);
+        if (transakcja.id &lt;= 0 || transakcja.nadejscie &lt; 0</pre>
+<p>Operatorem <code>&gt;&gt;</code> odczytujemy kolejne wartości. Warunek <code>if (!(...))</code> wykrywa, że którejś oczekiwanej liczby nie udało się odczytać. Zapis <code>||</code> czytamy jako „lub”: wystarczy jeden prawdziwy warunek. Przy sprawdzaniu błędów odrzucamy rekord, gdy choć jedno ograniczenie zostało złamane.</p>
+<p><strong>Krok 23.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>            || transakcja.czasWykonania &lt;= 0 || transakcja.fee &lt; 0
+            || transakcja.deadline &lt; transakcja.nadejscie) {
+            blad(nazwa, i + 2, &quot;nieprawidlowe wartosci transakcji&quot;);
+        }
+        transakcje.push_back(transakcja);
+    }</pre>
+<p>Zapis <code>||</code> czytamy jako „lub”: wystarczy jeden prawdziwy warunek. Przy sprawdzaniu błędów odrzucamy rekord, gdy choć jedno ograniczenie zostało złamane. Przez <code>push_back</code> dopisujemy element na koniec listy.</p>
+<p><strong>Krok 24.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>    sprawdzKoniecPliku(plik, nazwa, liczba + 2);
+    std::sort(transakcje.begin(), transakcje.end(),
+              [](const Transakcja&amp; a, const Transakcja&amp; b) {
+                  return a.id &lt; b.id;
+              });
+    for (std::size_t i = 1; i &lt; transakcje.size(); ++i) {</pre>
+<p>Sortujemy zakres od <code>begin()</code> do <code>end()</code>. W następnych liniach podajemy regułę, która mówi, kiedy element a ma być przed b. Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. Zapis <code>[](...) { ... }</code> to krótka funkcja, czyli lambda. Tu porównujemy dwa rekordy bez tworzenia osobnej nazwanej funkcji. Zaczynamy od indeksu 1, żeby móc porównać rekord z poprzednim. Po sortowaniu jednakowe ID będą obok siebie.</p>
+<p><strong>Krok 25.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>        if (transakcje[i - 1].id == transakcje[i].id) {
+            throw std::runtime_error(nazwa + &quot;: powtorzone ID transakcji&quot;);
+        }
+    }
+    std::sort(transakcje.begin(), transakcje.end(),
+              [](const Transakcja&amp; a, const Transakcja&amp; b) {</pre>
+<p>Przez <code>throw</code> przerywamy tę operację i przekazujemy opis błędu do <code>catch</code> w main. Nie pracujemy dalej na niepoprawnych danych. Sortujemy zakres od <code>begin()</code> do <code>end()</code>. W następnych liniach podajemy regułę, która mówi, kiedy element a ma być przed b. Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. Zapis <code>[](...) { ... }</code> to krótka funkcja, czyli lambda. Tu porównujemy dwa rekordy bez tworzenia osobnej nazwanej funkcji.</p>
+<p><strong>Krok 26.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>                  if (a.nadejscie != b.nadejscie) {
+                      return a.nadejscie &lt; b.nadejscie;
+                  }
+                  return a.id &lt; b.id;</pre>
+<p>Dopisujemy tę część do rozpoczętej wcześniej definicji. Wcięcia pokazują, które instrukcje należą do tego samego bloku.</p>
+<p><strong>Krok 27.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>              });
+    return transakcje;
+}</pre>
+<p>Dopisujemy tę część do rozpoczętej wcześniej definicji. Wcięcia pokazują, które instrukcje należą do tego samego bloku.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="2-3-2-sprawdzamy-sam-odczyt">2.3.2. Sprawdzamy sam odczyt</h4>
+<p><strong>Plik:</strong> <code>main.cpp</code>. <strong>Co robimy:</strong> zastępujemy cały main.cpp tym testem.</p>
+<p>Zastępujemy test Walidator testem Pliki. Odczytujemy konfigurację i transakcje, a następnie wypisujemy pola. W razie błędu catch wypisuje jego przyczynę. Pliki wejściowe leżą w folderze, z którego uruchamiamy program.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>#include &quot;Pliki.hpp&quot;
+#include &lt;exception&gt;
+#include &lt;iostream&gt;
+int main() {
+    try {
+        Konfiguracja konfiguracja = Pliki::wczytajKonfiguracje(&quot;konfiguracja.txt&quot;);</pre>
+<p>Przez <code>#include</code> dołączamy deklaracje, których używamy niżej. Cudzysłowów używamy przy naszych plikach, a znaków <code>&lt; &gt;</code> przy bibliotece C++. W bloku try wykonujemy czynności, które mogą zgłosić błąd. Pasujący catch wpiszemy po zamknięciu tego bloku. Wywołujemy metodę Pliki i zapamiętujemy zwrócone dane. Ścieżkę liczymy od folderu, z którego uruchomiliśmy program.</p>
+<p><strong>Krok 2.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>        std::vector&lt;Transakcja&gt; transakcje = Pliki::wczytajTransakcje(&quot;zgloszenia.txt&quot;);
+        std::cout &lt;&lt; konfiguracja.walidatorzy.size() &lt;&lt; &#x27; &#x27;
+                  &lt;&lt; konfiguracja.ziarno &lt;&lt; &#x27; &#x27; &lt;&lt; transakcje.size() &lt;&lt; &#x27;\n&#x27;;
+        for (const Transakcja&amp; t : transakcje) {
+            std::cout &lt;&lt; t.id &lt;&lt; &#x27; &#x27; &lt;&lt; t.nadejscie &lt;&lt; &#x27; &#x27;
+                      &lt;&lt; t.czasWykonania &lt;&lt; &#x27; &#x27; &lt;&lt; t.fee &lt;&lt; &#x27; &#x27; &lt;&lt; t.deadline &lt;&lt; &#x27;\n&#x27;;</pre>
+<p>W <code>std::vector</code> przechowujemy listę elementów. Typ wewnątrz <code>&lt; &gt;</code> mówi, co możemy na tę listę dodawać. Wywołujemy metodę Pliki i zapamiętujemy zwrócone dane. Ścieżkę liczymy od folderu, z którego uruchomiliśmy program. Przez <code>cout &lt;&lt;</code> wypisujemy dane na ekran. Spacje rozdzielają wartości, a <code>\n</code> kończy wiersz; <code>cerr</code> służy do komunikatów o błędach. Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania.</p>
+<p><strong>Krok 3.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>        }
+        return 0;
+    } catch (const std::exception&amp; blad) {
+        std::cerr &lt;&lt; &quot;Blad: &quot; &lt;&lt; blad.what() &lt;&lt; &#x27;\n&#x27;;</pre>
+<p>W main przez return 0 kończymy program i oznaczamy, że zakończył się poprawnie. Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. Przechwytujemy błąd. Przez what() odczytujemy jego opis, wypisujemy go na cerr i kończymy program kodem 1. Przez <code>cout &lt;&lt;</code> wypisujemy dane na ekran. Spacje rozdzielają wartości, a <code>\n</code> kończy wiersz; <code>cerr</code> służy do komunikatów o błędach.</p>
+<p><strong>Krok 4.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>        return 1;
+    }
+}</pre>
+<p>Dopisujemy tę część do rozpoczętej wcześniej definicji. Wcięcia pokazują, które instrukcje należą do tego samego bloku.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<p><strong>Przystanek: odczyt i sortowanie.</strong> Kończymy podane definicje, zapisujemy pliki i kompilujemy w folderze z kodem.</p>
+<pre>g++ -std=c++17 -Wall -Wextra -pedantic main.cpp Pliki.cpp -o symulator.exe
+.\symulator.exe</pre>
+<p><strong>Oczekiwany wynik:</strong> Dla naszego wejścia widzimy <code>1 12345 3</code>, potem trzy wiersze transakcji zgodne z plikiem. Gdy zamienimy kolejność rekordów na 3,1,2, program wypisze 1,2,3, bo nadejścia są jednakowe. Jeśli kompilator zgłasza błąd, poprawiamy pierwszy komunikat przed następnym krokiem.</p>
+<p>Testujemy także powtórzone ID, czas wykonania 0, brak rekordu i dodatkową kolumnę. Za każdym razem oczekujemy komunikatu <code>Blad:</code> z przyczyną. Po próbie przywracamy poprawne wejście. W opisie zapisujemy wejście testu i komunikat.</p>
+<h3 id="2-4-dodajemy-fifo-i-up-yw-czasu">2.4. Dodajemy FIFO i upływ czasu</h3>
+<h4 id="2-4-1-deklarujemy-stan-przebiegu">2.4.1. Deklarujemy stan przebiegu</h4>
+<p><strong>Plik:</strong> <code>Symulator.hpp</code>. <strong>Co robimy:</strong> nowy plik.</p>
+<p>Symulator przechowuje wejście, wykonawców, wyniki i kolejkę FIFO. Czas oraz nastepnaTransakcja zaczynają od 0. Prywatne metody dzielą przebieg na małe działania. Każde uruchomienie tworzymy w osobnym obiekcie. Na tym etapie konstruktor przyjmuje tylko konfigurację i wejście.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>#pragma once
+#include &quot;Dane.hpp&quot;
+#include &quot;Walidator.hpp&quot;
+#include &lt;cstddef&gt;
+#include &lt;queue&gt;
+#include &lt;vector&gt;</pre>
+<p>Przez <code>#pragma once</code> prosimy kompilator, żeby dołączył ten nagłówek tylko raz w danym pliku .cpp. Przez <code>#include</code> dołączamy deklaracje, których używamy niżej. Cudzysłowów używamy przy naszych plikach, a znaków <code>&lt; &gt;</code> przy bibliotece C++.</p>
+<p><strong>Krok 2.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>class Symulator {
+public:
+    Symulator(const Konfiguracja&amp; konfiguracja,
+              const std::vector&lt;Transakcja&gt;&amp; wejscie);
+    std::vector&lt;WynikTransakcji&gt; uruchom();
+    long long pobierzCzasKonca() const;</pre>
+<p>Zaczynamy klasę. Łączymy w niej dane obiektu z metodami, przez które z niego korzystamy. Pod <code>public:</code> wpisujemy metody dostępne z innych części programu. Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. W <code>std::vector</code> przechowujemy listę elementów. Typ wewnątrz <code>&lt; &gt;</code> mówi, co możemy na tę listę dodawać.</p>
+<p><strong>Krok 3.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>private:
+    std::vector&lt;Transakcja&gt; transakcje;
+    std::vector&lt;Walidator&gt; walidatorzy;
+    std::vector&lt;WynikTransakcji&gt; wyniki;
+    std::queue&lt;Transakcja&gt; fifo;
+    long long czas = 0;</pre>
+<p>Pod <code>private:</code> trzymamy stan obiektu. Zmieniamy go przez metody, żeby nie nadpisać go przypadkiem w main. W <code>std::vector</code> przechowujemy listę elementów. Typ wewnątrz <code>&lt; &gt;</code> mówi, co możemy na tę listę dodawać. Tworzymy kolejkę FIFO. Dodajemy na koniec, a pobieramy z początku. Tworzymy zmienną albo pole. Wartość po <code>=</code> jest wartością początkową; <code>long long</code> mieści większe liczby całkowite niż <code>int</code>, a <code>double</code> także ułamki.</p>
+<p><strong>Krok 4.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>    std::size_t nastepnaTransakcja = 0;
+    void dodajNadejscia();
+    bool kolejkaPusta() const;
+    Transakcja pobierzTransakcje();
+    int wybierzWalidatora() const;
+    void przydzielZadania();</pre>
+<p>Tworzymy zmienną albo pole. Wartość po <code>=</code> jest wartością początkową; <code>long long</code> mieści większe liczby całkowite niż <code>int</code>, a <code>double</code> także ułamki.</p>
+<p><strong>Krok 5.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>    void sprawdzZakonczenia();
+    bool czyPozostalaPraca() const;
+};</pre>
+<p>Dopisujemy tę część do rozpoczętej wcześniej definicji. Wcięcia pokazują, które instrukcje należą do tego samego bloku.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="2-4-2-do-czamy-nag-wek">2.4.2. Dołączamy nagłówek</h4>
+<p><strong>Plik:</strong> <code>Symulator.cpp</code>. <strong>Co robimy:</strong> nowy plik.</p>
+<p>Tworzymy plik definicji metod. Kolejne metody dopisujemy w tym samym pliku, pod poprzednimi.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>#include &quot;Symulator.hpp&quot;</pre>
+<p>Przez <code>#include</code> dołączamy deklaracje, których używamy niżej. Cudzysłowów używamy przy naszych plikach, a znaków <code>&lt; &gt;</code> przy bibliotece C++.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="2-4-3-tworzymy-walidator-w">2.4.3. Tworzymy walidatorów</h4>
+<p><strong>Plik:</strong> <code>Symulator.cpp</code>. <strong>Co robimy:</strong> dopisujemy po poprzedniej zakończonej metodzie.</p>
+<p>Kopiujemy transakcje i tworzymy osobny Walidator dla każdego rekordu konfiguracji. Każdy zaczyna wolny.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>Symulator::Symulator(const Konfiguracja&amp; konfiguracja,
+                     const std::vector&lt;Transakcja&gt;&amp; wejscie)
+    : transakcje(wejscie) {
+    for (const DaneWalidatora&amp; dane : konfiguracja.walidatorzy) {</pre>
+<p>Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. W <code>std::vector</code> przechowujemy listę elementów. Typ wewnątrz <code>&lt; &gt;</code> mówi, co możemy na tę listę dodawać. Na liście inicjalizacyjnej kopiujemy dane wejściowe do nowego przebiegu. Pola czasu i indeksów zaczynają od wartości 0 podanych w nagłówku. W tej pętli bierzemy po kolei elementy listy. Znak <code>&amp;</code> pozwala odwołać się do właściwego obiektu; z <code>const</code> tylko go odczytujemy.</p>
+<p><strong>Krok 2.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>        walidatorzy.push_back(Walidator(dane));
+    }
+}</pre>
+<p>Przez <code>push_back</code> dopisujemy element na koniec listy.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="2-4-4-wpuszczamy-nadej-cia">2.4.4. Wpuszczamy nadejścia</h4>
+<p><strong>Plik:</strong> <code>Symulator.cpp</code>. <strong>Co robimy:</strong> dopisujemy po poprzedniej zakończonej metodzie.</p>
+<p>Wejście jest posortowane przez Pliki. Dopóki kolejny rekord ma nadejście równe czas, dopisujemy go do kolejki. Nie wpuszczamy jeszcze przyszłych zadań.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>void Symulator::dodajNadejscia() {
+    while (nastepnaTransakcja &lt; transakcje.size()
+           &amp;&amp; transakcje[nastepnaTransakcja].nadejscie == czas) {
+        fifo.push(transakcje[nastepnaTransakcja]);</pre>
+<p>Najpierw sprawdzamy, czy istnieje kolejny rekord. Dzięki kolejności warunków z <code>&amp;&amp;</code> nie odczytujemy elementu poza listą. Wpuszczamy do kolejki tylko transakcje przychodzące w bieżącym czasie. Wcześniejsze wczytanie pliku nie oznacza ich nadejścia. Przez <code>push</code> dodajemy transakcję do wybranej kolejki.</p>
+<p><strong>Krok 2.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>        ++nastepnaTransakcja;
+    }
+}</pre>
+<p>Przesuwamy indeks na kolejny rekord, żeby nie dodać tej samej transakcji drugi raz.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="2-4-5-sprawdzamy-kolejk">2.4.5. Sprawdzamy kolejkę</h4>
+<p><strong>Plik:</strong> <code>Symulator.cpp</code>. <strong>Co robimy:</strong> dopisujemy po poprzedniej zakończonej metodzie.</p>
+<p>Ta metoda ukrywa sposób sprawdzania kolejki. W etapie 3 zmienimy jej wnętrze, ale pętla czasu nadal będzie ją wywoływać.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>bool Symulator::kolejkaPusta() const {
+    return fifo.empty();
+}</pre>
+<p>Dopisujemy tę część do rozpoczętej wcześniej definicji. Wcięcia pokazują, które instrukcje należą do tego samego bloku.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="2-4-6-pobieramy-pierwsz-transakcj">2.4.6. Pobieramy pierwszą transakcję</h4>
+<p><strong>Plik:</strong> <code>Symulator.cpp</code>. <strong>Co robimy:</strong> dopisujemy po poprzedniej zakończonej metodzie.</p>
+<p>Front pokazuje pierwszą transakcję, pop usuwa ją z kolejki. Najpierw kopiujemy rekord, żeby nie stracić go po usunięciu.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>Transakcja Symulator::pobierzTransakcje() {
+    Transakcja transakcja = fifo.front();
+    fifo.pop();
+    return transakcja;
+}</pre>
+<p>Przez <code>front()</code> kopiujemy pierwszą transakcję FIFO. Dopiero <code>pop()</code> usuwa ją z kolejki.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="2-4-7-wybieramy-wolnego-wykonawc">2.4.7. Wybieramy wolnego wykonawcę</h4>
+<p><strong>Plik:</strong> <code>Symulator.cpp</code>. <strong>Co robimy:</strong> dopisujemy po poprzedniej zakończonej metodzie.</p>
+<p>Sprawdzamy wykonawców w kolejności ID. Zwracamy indeks pierwszego wolnego, a nie jego ID. Gdy nie ma wolnych, zwracamy -1.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>int Symulator::wybierzWalidatora() const {
+    for (std::size_t i = 0; i &lt; walidatorzy.size(); ++i) {
+        if (walidatorzy[i].czyWolny()) {
+            return static_cast&lt;int&gt;(i);
+        }
+    }</pre>
+<p>Przechodzimy przez listę według indeksów: zaczynamy od 0, kończymy przed <code>size()</code>, a po każdym obrocie zwiększamy i o 1. Przez <code>static_cast&lt;typ&gt;</code> zapisujemy jawną konwersję liczby na podany typ. Przykładowo zamieniamy indeks <code>size_t</code> na zwracany <code>int</code>.</p>
+<p><strong>Krok 2.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>    return -1;
+}</pre>
+<p>Wartość -1 oznacza, że nie znaleźliśmy wolnego walidatora. Wtedy zostawiamy zadanie w kolejce.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="2-4-8-przydzielamy-zadania">2.4.8. Przydzielamy zadania</h4>
+<p><strong>Plik:</strong> <code>Symulator.cpp</code>. <strong>Co robimy:</strong> dopisujemy po poprzedniej zakończonej metodzie.</p>
+<p>Najpierw szukamy wykonawcy, dopiero potem zdejmujemy transakcję z kolejki. Dzięki temu zadanie nie ginie, gdy wszyscy są zajęci.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>void Symulator::przydzielZadania() {
+    while (!kolejkaPusta()) {
+        int indeks = wybierzWalidatora();
+        if (indeks == -1) {
+            break;
+        }</pre>
+<p>Przydzielamy zadania, dopóki w kolejce coś czeka. Jeśli nie znajdziemy wolnego wykonawcy, przerwiemy tę pętlę przez <code>break</code>. Tworzymy zmienną albo pole. Wartość po <code>=</code> jest wartością początkową; <code>long long</code> mieści większe liczby całkowite niż <code>int</code>, a <code>double</code> także ułamki. Wartość -1 oznacza, że nie znaleźliśmy wolnego walidatora. Wtedy zostawiamy zadanie w kolejce.</p>
+<p><strong>Krok 2.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>        Transakcja transakcja = pobierzTransakcje();
+        walidatorzy[indeks].rozpocznij(transakcja, czas);
+    }
+}</pre>
+<p>Przekazujemy wybraną transakcję wolnemu walidatorowi. Zaczyna ją w bieżącym czasie symulacji.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="2-4-9-ko-czymy-zadania">2.4.9. Kończymy zadania</h4>
+<p><strong>Plik:</strong> <code>Symulator.cpp</code>. <strong>Co robimy:</strong> dopisujemy po poprzedniej zakończonej metodzie.</p>
+<p>Sprawdzamy wykonawców po przesunięciu czasu. Zakoncz oddaje wynik i oznacza obiekt jako wolny.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>void Symulator::sprawdzZakonczenia() {
+    for (Walidator&amp; walidator : walidatorzy) {
+        if (walidator.czyKonczy(czas)) {
+            wyniki.push_back(walidator.zakoncz());</pre>
+<p>W tej pętli bierzemy po kolei elementy listy. Znak <code>&amp;</code> pozwala odwołać się do właściwego obiektu; z <code>const</code> tylko go odczytujemy. Sprawdzamy, czy zadanie kończy się dokładnie teraz. Przez <code>zakoncz()</code> otrzymujemy wynik i zwalniamy walidatora. Przez <code>push_back</code> dopisujemy element na koniec listy.</p>
+<p><strong>Krok 2.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>        }
+    }
+}</pre>
+<p>Zamykamy otwarte wcześniej bloki. Po definicji klasy lub struktury stawiamy <code>};</code>, a po ciele funkcji samo <code>}</code>.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="2-4-10-sprawdzamy-czy-jest-jeszcze-praca">2.4.10. Sprawdzamy, czy jest jeszcze praca</h4>
+<p><strong>Plik:</strong> <code>Symulator.cpp</code>. <strong>Co robimy:</strong> dopisujemy po poprzedniej zakończonej metodzie.</p>
+<p>Kontrolujemy trzy możliwości: przyszłe nadejścia, oczekujących w kolejce i pracujących walidatorów. Samo opróżnienie kolejki nie kończy symulacji.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>bool Symulator::czyPozostalaPraca() const {
+    if (nastepnaTransakcja &lt; transakcje.size() || !kolejkaPusta()) {
+        return true;
+    }
+    for (const Walidator&amp; walidator : walidatorzy) {
+        if (!walidator.czyWolny()) {</pre>
+<p>Zapis <code>||</code> czytamy jako „lub”: wystarczy jeden prawdziwy warunek. Przy sprawdzaniu błędów odrzucamy rekord, gdy choć jedno ograniczenie zostało złamane. Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. W tej pętli bierzemy po kolei elementy listy. Znak <code>&amp;</code> pozwala odwołać się do właściwego obiektu; z <code>const</code> tylko go odczytujemy.</p>
+<p><strong>Krok 2.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>            return true;
+        }
+    }
+    return false;
+}</pre>
+<p>Dopisujemy tę część do rozpoczętej wcześniej definicji. Wcięcia pokazują, które instrukcje należą do tego samego bloku.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="2-4-11-czymy-p-tl-czasu">2.4.11. Łączymy pętlę czasu</h4>
+<p><strong>Plik:</strong> <code>Symulator.cpp</code>. <strong>Co robimy:</strong> dopisujemy po poprzedniej zakończonej metodzie.</p>
+<p>Zaczynamy obsługę w 0. Jeśli praca została, zwiększamy czas o 1 i obsługujemy zakończenia. Dopiero potem kolejny obrót wpuszcza nadejścia i przydziela nowe zadania.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>std::vector&lt;WynikTransakcji&gt; Symulator::uruchom() {
+    while (true) {
+        dodajNadejscia();
+        przydzielZadania();
+        if (!czyPozostalaPraca()) {
+            break;</pre>
+<p>W <code>std::vector</code> przechowujemy listę elementów. Typ wewnątrz <code>&lt; &gt;</code> mówi, co możemy na tę listę dodawać.</p>
+<p><strong>Krok 2.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>        }
+        ++czas;
+        sprawdzZakonczenia();
+    }
+    return wyniki;
+}</pre>
+<p>Zwiększamy czas symulacji o jedną umowną jednostkę. Nie dodajemy rzeczywistego czekania ani sleep.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="2-4-12-udost-pniamy-czas-ko-ca">2.4.12. Udostępniamy czas końca</h4>
+<p><strong>Plik:</strong> <code>Symulator.cpp</code>. <strong>Co robimy:</strong> dopisujemy po poprzedniej zakończonej metodzie.</p>
+<p>Zwracamy czas zakończenia całego przebiegu. W etapie 5 użyjemy go jako mianownika wykorzystania walidatorów.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>long long Symulator::pobierzCzasKonca() const {
+    return czas;
+}</pre>
+<p>Przez return oddajemy wartość wskazanego pola osobie wywołującej metodę. Metoda z const na końcu nagłówka odczytuje stan, bez zmieniania go.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="2-4-13-sprawdzamy-przebieg-na-ekranie">2.4.13. Sprawdzamy przebieg na ekranie</h4>
+<p><strong>Plik:</strong> <code>main.cpp</code>. <strong>Co robimy:</strong> zastępujemy test odczytu tym main.cpp.</p>
+<p>Odbieramy listę wyników i wypisujemy cztery pola. Nie zapisujemy jeszcze pliku.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>#include &quot;Pliki.hpp&quot;
+#include &quot;Symulator.hpp&quot;
+#include &lt;exception&gt;
+#include &lt;iostream&gt;
+int main() {
+    try {</pre>
+<p>Przez <code>#include</code> dołączamy deklaracje, których używamy niżej. Cudzysłowów używamy przy naszych plikach, a znaków <code>&lt; &gt;</code> przy bibliotece C++. W bloku try wykonujemy czynności, które mogą zgłosić błąd. Pasujący catch wpiszemy po zamknięciu tego bloku.</p>
+<p><strong>Krok 2.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>        Konfiguracja konfiguracja = Pliki::wczytajKonfiguracje(&quot;konfiguracja.txt&quot;);
+        std::vector&lt;Transakcja&gt; transakcje = Pliki::wczytajTransakcje(&quot;zgloszenia.txt&quot;);
+        Symulator symulator(konfiguracja, transakcje);
+        std::vector&lt;WynikTransakcji&gt; wyniki = symulator.uruchom();
+        for (const WynikTransakcji&amp; w : wyniki) {
+            std::cout &lt;&lt; w.idTransakcji &lt;&lt; &#x27; &#x27; &lt;&lt; w.start &lt;&lt; &#x27; &#x27;</pre>
+<p>Wywołujemy metodę Pliki i zapamiętujemy zwrócone dane. Ścieżkę liczymy od folderu, z którego uruchomiliśmy program. W <code>std::vector</code> przechowujemy listę elementów. Typ wewnątrz <code>&lt; &gt;</code> mówi, co możemy na tę listę dodawać. Uruchamiamy cały przebieg i odbieramy listę zakończonych transakcji. Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania.</p>
+<p><strong>Krok 3.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>                      &lt;&lt; w.koniec &lt;&lt; &#x27; &#x27; &lt;&lt; w.oczekiwanie &lt;&lt; &#x27;\n&#x27;;
+        }
+        return 0;
+    } catch (const std::exception&amp; blad) {</pre>
+<p>Przez <code>cout &lt;&lt;</code> wypisujemy dane na ekran. Spacje rozdzielają wartości, a <code>\n</code> kończy wiersz; <code>cerr</code> służy do komunikatów o błędach. W main przez return 0 kończymy program i oznaczamy, że zakończył się poprawnie. Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. Przechwytujemy błąd. Przez what() odczytujemy jego opis, wypisujemy go na cerr i kończymy program kodem 1.</p>
+<p><strong>Krok 4.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>        std::cerr &lt;&lt; &quot;Blad: &quot; &lt;&lt; blad.what() &lt;&lt; &#x27;\n&#x27;;
+        return 1;
+    }
+}</pre>
+<p>Przez <code>cout &lt;&lt;</code> wypisujemy dane na ekran. Spacje rozdzielają wartości, a <code>\n</code> kończy wiersz; <code>cerr</code> służy do komunikatów o błędach.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<p><strong>Przystanek: FIFO na ekranie.</strong> Kończymy podane definicje, zapisujemy pliki i kompilujemy w folderze z kodem.</p>
+<pre>g++ -std=c++17 -Wall -Wextra -pedantic main.cpp Walidator.cpp Symulator.cpp Pliki.cpp -o symulator.exe
+.\symulator.exe</pre>
+<p><strong>Oczekiwany wynik:</strong> Otrzymujemy <code>1 0 2 0</code>, <code>2 2 4 2</code>, <code>3 4 6 4</code>. Dla jednej transakcji <code>1 0 3 1 10</code> oczekujemy startu 0 i końca 3. Dla samego <code>0</code> nie ma rekordów wyników. Jeśli kompilator zgłasza błąd, poprawiamy pierwszy komunikat przed następnym krokiem.</p>
+<h3 id="2-5-zapisujemy-wyniki-fifo">2.5. Zapisujemy wyniki FIFO</h3>
+<h4 id="2-5-1-definiujemy-zapis-wynik-w">2.5.1. Definiujemy zapis wyników</h4>
+<p><strong>Plik:</strong> <code>Pliki.cpp</code>. <strong>Co robimy:</strong> dopisujemy na końcu Pliki.cpp, po odczycie transakcji.</p>
+<p>Dopisujemy zapiszWyniki na końcu Pliki.cpp. Nagłówek kolumn i jeden wiersz na zakończoną transakcję pozwalają porównać plik z przykładem ręcznym. Na razie nie dopisujemy średniej ani podsumowania.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>void Pliki::zapiszWyniki(const std::string&amp; nazwa,
+                        const std::vector&lt;WynikTransakcji&gt;&amp; wyniki) {
+    std::ofstream plik(nazwa);
+    if (!plik) {
+        throw std::runtime_error(&quot;Nie mozna zapisac &quot; + nazwa);
+    }</pre>
+<p>Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. W <code>std::vector</code> przechowujemy listę elementów. Typ wewnątrz <code>&lt; &gt;</code> mówi, co możemy na tę listę dodawać. Otwieramy plik do zapisu. Istniejącą zawartość tego pliku nadpisujemy przy każdym udanym otwarciu. Przez <code>throw</code> przerywamy tę operację i przekazujemy opis błędu do <code>catch</code> w main. Nie pracujemy dalej na niepoprawnych danych.</p>
+<p><strong>Krok 2.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>    plik &lt;&lt; &quot;id_transakcji id_walidatora nadejscie start koniec &quot;
+         &lt;&lt; &quot;oczekiwanie deadline opoznienie terminowo\n&quot;;
+    for (const WynikTransakcji&amp; wynik : wyniki) {
+        plik &lt;&lt; wynik.idTransakcji &lt;&lt; &#x27; &#x27; &lt;&lt; wynik.idWalidatora &lt;&lt; &#x27; &#x27;
+             &lt;&lt; wynik.nadejscie &lt;&lt; &#x27; &#x27; &lt;&lt; wynik.start &lt;&lt; &#x27; &#x27; &lt;&lt; wynik.koniec &lt;&lt; &#x27; &#x27;
+             &lt;&lt; wynik.oczekiwanie &lt;&lt; &#x27; &#x27; &lt;&lt; wynik.deadline &lt;&lt; &#x27; &#x27;</pre>
+<p>Operatorem <code>&lt;&lt;</code> dopisujemy dane do pliku. Spacje rozdzielają kolumny, a <code>\n</code> kończy wiersz. Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. W tej pętli bierzemy po kolei elementy listy. Znak <code>&amp;</code> pozwala odwołać się do właściwego obiektu; z <code>const</code> tylko go odczytujemy.</p>
+<p><strong>Krok 3.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>             &lt;&lt; wynik.opoznienie &lt;&lt; &#x27; &#x27; &lt;&lt; wynik.terminowo &lt;&lt; &#x27;\n&#x27;;
+    }
+    plik.flush();
+    if (!plik) {</pre>
+<p>Operatorem <code>&lt;&lt;</code> dopisujemy dane do pliku. Spacje rozdzielają kolumny, a <code>\n</code> kończy wiersz. Przekazujemy bufor zapisu do pliku i sprawdzamy stan strumienia. Błąd zapisu zgłaszamy tak samo jak błąd otwarcia.</p>
+<p><strong>Krok 4.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>        throw std::runtime_error(&quot;Blad zapisu &quot; + nazwa);
+    }
+}</pre>
+<p>Przez <code>throw</code> przerywamy tę operację i przekazujemy opis błędu do <code>catch</code> w main. Nie pracujemy dalej na niepoprawnych danych.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="2-5-2-czymy-odczyt-fifo-i-zapis">2.5.2. Łączymy odczyt, FIFO i zapis</h4>
+<p><strong>Plik:</strong> <code>main.cpp</code>. <strong>Co robimy:</strong> zastępujemy cały dotychczasowy main.cpp.</p>
+<p>Zastępujemy main testowy programem kończącym etap 2. Wczytujemy dane, uruchamiamy jeden przebieg i zapisujemy wynik. Zachowujemy try/catch.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>#include &quot;Pliki.hpp&quot;
+#include &quot;Symulator.hpp&quot;
+#include &lt;exception&gt;
+#include &lt;iostream&gt;
+int main() {
+    try {</pre>
+<p>Przez <code>#include</code> dołączamy deklaracje, których używamy niżej. Cudzysłowów używamy przy naszych plikach, a znaków <code>&lt; &gt;</code> przy bibliotece C++. W bloku try wykonujemy czynności, które mogą zgłosić błąd. Pasujący catch wpiszemy po zamknięciu tego bloku.</p>
+<p><strong>Krok 2.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>        Konfiguracja konfiguracja = Pliki::wczytajKonfiguracje(&quot;konfiguracja.txt&quot;);
+        std::vector&lt;Transakcja&gt; transakcje = Pliki::wczytajTransakcje(&quot;zgloszenia.txt&quot;);
+        Symulator fifo(konfiguracja, transakcje);
+        std::vector&lt;WynikTransakcji&gt; wynikiFifo = fifo.uruchom();
+        Pliki::zapiszWyniki(&quot;wyniki_fifo.txt&quot;, wynikiFifo);
+        std::cout &lt;&lt; &quot;Zapisano wyniki_fifo.txt\n&quot;;</pre>
+<p>Wywołujemy metodę Pliki i zapamiętujemy zwrócone dane. Ścieżkę liczymy od folderu, z którego uruchomiliśmy program. W <code>std::vector</code> przechowujemy listę elementów. Typ wewnątrz <code>&lt; &gt;</code> mówi, co możemy na tę listę dodawać. Tworzymy nowy obiekt na ten przebieg. Zaczynamy od czasu 0 i wolnych walidatorów, niezależnie od poprzedniej strategii. Uruchamiamy cały przebieg i odbieramy listę zakończonych transakcji.</p>
+<p><strong>Krok 3.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>        return 0;
+    } catch (const std::exception&amp; blad) {
+        std::cerr &lt;&lt; &quot;Blad: &quot; &lt;&lt; blad.what() &lt;&lt; &#x27;\n&#x27;;
+        return 1;
+    }
+}</pre>
+<p>W main przez return 0 kończymy program i oznaczamy, że zakończył się poprawnie. Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. Przechwytujemy błąd. Przez what() odczytujemy jego opis, wypisujemy go na cerr i kończymy program kodem 1. Przez <code>cout &lt;&lt;</code> wypisujemy dane na ekran. Spacje rozdzielają wartości, a <code>\n</code> kończy wiersz; <code>cerr</code> służy do komunikatów o błędach.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<p><strong>Przystanek: koniec etapu 2.</strong> Kończymy podane definicje, zapisujemy pliki i kompilujemy w folderze z kodem.</p>
+<pre>g++ -std=c++17 -Wall -Wextra -pedantic main.cpp Walidator.cpp Symulator.cpp Pliki.cpp -o symulator.exe
+.\symulator.exe</pre>
+<p><strong>Oczekiwany wynik:</strong> Widzimy <code>Zapisano wyniki_fifo.txt</code>. W pliku mamy nagłówek i trzy rekordy: starty 0,2,4; końce 2,4,6; oczekiwania 0,2,4. Nie ma jeszcze PODSUMOWANIE. Jeśli kompilator zgłasza błąd, poprawiamy pierwszy komunikat przed następnym krokiem.</p>
+<p>Na koniec mamy osiem plików kodu, README.md z poleceniem kompilacji oraz wyniki_fifo.txt. Sprawdzamy, że liczba rekordów zgadza się z liczbą transakcji i że jeden walidator nie wykonuje dwóch zadań naraz. Wynik próby zapisujemy w „Stan pracy” w opisie.</p>
+<h2 id="etap-3-dodajemy-fee-i-losowanie-walidatora">Etap 3. Dodajemy FEE i losowanie walidatora</h2>
+<p>Rozbudowujemy działające FIFO. Zachowujemy Walidator i odczyt plików. Poniżej wskazujemy konkretne miejsca dopisania lub zastąpienia kodu. Po ostatnim kroku tego etapu oba przebiegi zapisują wyniki, nadal bez zbiorczych statystyk.</p>
+<h3 id="3-1-dodajemy-wyb-r-strategii">3.1. Dodajemy wybór strategii</h3>
+<h4 id="3-1-1-nazywamy-strategie">3.1.1. Nazywamy strategie</h4>
+<p><strong>Plik:</strong> <code>Dane.hpp</code>. <strong>Co robimy:</strong> dopisujemy na końcu nagłówka.</p>
+<p>Dopisujemy na końcu Dane.hpp, po zamknięciu WynikTransakcji. Ten typ przechowuje wybór kolejki.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>enum class Strategia { FIFO, FEE };</pre>
+<p>Definiujemy własny typ <code>Strategia</code>. W kodzie wybieramy jedną z nazw: <code>Strategia::FIFO</code> albo <code>Strategia::FEE</code>.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="3-1-2-zapami-tujemy-wyb-r">3.1.2. Zapamiętujemy wybór</h4>
+<p><strong>Plik:</strong> <code>Symulator.hpp</code>. <strong>Co robimy:</strong> dopisujemy jedno pole pod private:.</p>
+<p>Dopisujemy bezpośrednio pod private:.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>    Strategia strategia;</pre>
+<p>Dopisujemy tę część do rozpoczętej wcześniej definicji. Wcięcia pokazują, które instrukcje należą do tego samego bloku.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="3-1-3-rozszerzamy-deklaracj-konstruktora">3.1.3. Rozszerzamy deklarację konstruktora</h4>
+<p><strong>Plik:</strong> <code>Symulator.hpp</code>. <strong>Co robimy:</strong> zastępujemy tylko deklarację konstruktora w public:.</p>
+<p>Usuwamy dotychczasową deklarację konstruktora z dwoma parametrami. Metod uruchom i pobierzCzasKonca nie zmieniamy.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>    Symulator(const Konfiguracja&amp; konfiguracja,
+              const std::vector&lt;Transakcja&gt;&amp; wejscie,
+              Strategia wybranaStrategia);</pre>
+<p>Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. W <code>std::vector</code> przechowujemy listę elementów. Typ wewnątrz <code>&lt; &gt;</code> mówi, co możemy na tę listę dodawać.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="3-1-4-zmieniamy-definicj-konstruktora">3.1.4. Zmieniamy definicję konstruktora</h4>
+<p><strong>Plik:</strong> <code>Symulator.cpp</code>. <strong>Co robimy:</strong> zastępujemy starą definicję konstruktora.</p>
+<p>Zastępujemy tylko Symulator::Symulator. Parametr wybranaStrategia kopiujemy do pola strategia. Pozostałe metody na razie obsługują FIFO.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>Symulator::Symulator(const Konfiguracja&amp; konfiguracja,
+                     const std::vector&lt;Transakcja&gt;&amp; wejscie,
+                     Strategia wybranaStrategia)
+    : strategia(wybranaStrategia), transakcje(wejscie) {</pre>
+<p>Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. W <code>std::vector</code> przechowujemy listę elementów. Typ wewnątrz <code>&lt; &gt;</code> mówi, co możemy na tę listę dodawać. Na liście inicjalizacyjnej kopiujemy dane wejściowe do nowego przebiegu. Pola czasu i indeksów zaczynają od wartości 0 podanych w nagłówku.</p>
+<p><strong>Krok 2.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>    for (const DaneWalidatora&amp; dane : konfiguracja.walidatorzy) {
+        walidatorzy.push_back(Walidator(dane));
+    }
+}</pre>
+<p>Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. W tej pętli bierzemy po kolei elementy listy. Znak <code>&amp;</code> pozwala odwołać się do właściwego obiektu; z <code>const</code> tylko go odczytujemy. Przez <code>push_back</code> dopisujemy element na koniec listy.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="3-1-5-podajemy-wyb-r-przy-tworzeniu-obiektu">3.1.5. Podajemy wybór przy tworzeniu obiektu</h4>
+<p><strong>Plik:</strong> <code>main.cpp</code>. <strong>Co robimy:</strong> zastępujemy jeden wiersz w main.</p>
+<p>Zastępujemy dotychczasowy wiersz tworzący fifo. Na tym przystanku sprawdzamy tylko FIFO; obsługę wyboru FEE dopiszemy w 3.2.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>        Symulator fifo(konfiguracja, transakcje, Strategia::FIFO);</pre>
+<p>Tworzymy nowy obiekt na ten przebieg. Zaczynamy od czasu 0 i wolnych walidatorów, niezależnie od poprzedniej strategii.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<p><strong>Przystanek: wybór zapisany w obiekcie.</strong> Kończymy podane definicje, zapisujemy pliki i kompilujemy w folderze z kodem.</p>
+<pre>g++ -std=c++17 -Wall -Wextra -pedantic main.cpp Walidator.cpp Symulator.cpp Pliki.cpp -o symulator.exe
+.\symulator.exe</pre>
+<p><strong>Oczekiwany wynik:</strong> FIFO daje te same trzy rekordy co na końcu etapu 2. Jeśli kompilator zgłasza błąd, poprawiamy pierwszy komunikat przed następnym krokiem.</p>
+<h3 id="3-2-piszemy-kolejk-fee">3.2. Piszemy kolejkę FEE</h3>
+<h4 id="3-2-1-deklarujemy-regu-por-wnywania">3.2.1. Deklarujemy regułę porównywania</h4>
+<p><strong>Plik:</strong> <code>Symulator.hpp</code>. <strong>Co robimy:</strong> dopisujemy przed definicją klasy Symulator.</p>
+<p>Wpisujemy przed class Symulator, po include. Funktor to obiekt wywoływany jak funkcja: kolejka użyje jego operator(). Porównujemy a z b. True oznacza, że a ma niższy priorytet.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>struct PorownajFee {
+    bool operator()(const Transakcja&amp; a, const Transakcja&amp; b) const;
+};</pre>
+<p>Zaczynamy rekord <code>PorownajFee</code>. Między jego klamrami wpisujemy pola, które przechowujemy razem. Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="3-2-2-dodajemy-drug-kolejk">3.2.2. Dodajemy drugą kolejkę</h4>
+<p><strong>Plik:</strong> <code>Symulator.hpp</code>. <strong>Co robimy:</strong> dopisujemy pod std::queue&lt;Transakcja&gt; fifo;.</p>
+<p>Dopisujemy pod polem fifo. Trzy parametry oznaczają typ elementu, listę przechowującą elementy i regułę porównania.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>    std::priority_queue&lt;Transakcja, std::vector&lt;Transakcja&gt;, PorownajFee&gt; fee;</pre>
+<p>W <code>std::vector</code> przechowujemy listę elementów. Typ wewnątrz <code>&lt; &gt;</code> mówi, co możemy na tę listę dodawać. Tworzymy kolejkę FEE. <code>PorownajFee</code> wyznacza element, który odczytamy przez <code>top()</code>.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="3-2-3-definiujemy-komparator">3.2.3. Definiujemy komparator</h4>
+<p><strong>Plik:</strong> <code>Symulator.cpp</code>. <strong>Co robimy:</strong> dopisujemy przed konstruktorem.</p>
+<p>Dopisujemy po include, przed konstruktorem. Najpierw porównujemy fee, potem nadejście, potem ID. Funkcja nie zmienia a ani b.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>bool PorownajFee::operator()(const Transakcja&amp; a, const Transakcja&amp; b) const {
+    if (a.fee != b.fee) {
+        return a.fee &lt; b.fee;
+    }
+    if (a.nadejscie != b.nadejscie) {
+        return a.nadejscie &gt; b.nadejscie;</pre>
+<p>Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. W komparatorze priority_queue true oznacza, że a ma niższy priorytet niż b. Dlatego niższe fee porównujemy znakiem <code>&lt;</code>. Przy równym fee późniejsze nadejście ma niższy priorytet. Zwracamy wtedy true dla a.nadejscie większego od b.nadejscie.</p>
+<p><strong>Krok 2.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>    }
+    return a.id &gt; b.id;
+}</pre>
+<p>Gdy fee i nadejście są równe, niższe ID wygrywa. Dlatego większe ID uznajemy za niższy priorytet.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="3-2-4-dodajemy-do-wybranej-kolejki">3.2.4. Dodajemy do wybranej kolejki</h4>
+<p><strong>Plik:</strong> <code>Symulator.cpp</code>. <strong>Co robimy:</strong> zastępujemy poprzednią definicję wskazanej metody.</p>
+<p>Zastępujemy tylko tę metodę. Deklaracja w nagłówku pozostaje bez zmian. Pętla uruchom także pozostaje taka sama.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>void Symulator::dodajNadejscia() {
+    while (nastepnaTransakcja &lt; transakcje.size()
+           &amp;&amp; transakcje[nastepnaTransakcja].nadejscie == czas) {
+        const Transakcja&amp; transakcja = transakcje[nastepnaTransakcja];
+        if (strategia == Strategia::FIFO) {
+            fifo.push(transakcja);</pre>
+<p>Najpierw sprawdzamy, czy istnieje kolejny rekord. Dzięki kolejności warunków z <code>&amp;&amp;</code> nie odczytujemy elementu poza listą. Wpuszczamy do kolejki tylko transakcje przychodzące w bieżącym czasie. Wcześniejsze wczytanie pliku nie oznacza ich nadejścia. Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. Przez <code>push</code> dodajemy transakcję do wybranej kolejki.</p>
+<p><strong>Krok 2.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>        } else {
+            fee.push(transakcja);
+        }
+        ++nastepnaTransakcja;
+    }
+}</pre>
+<p>Przez <code>push</code> dodajemy transakcję do wybranej kolejki. Przesuwamy indeks na kolejny rekord, żeby nie dodać tej samej transakcji drugi raz.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="3-2-5-sprawdzamy-wybran-kolejk">3.2.5. Sprawdzamy wybraną kolejkę</h4>
+<p><strong>Plik:</strong> <code>Symulator.cpp</code>. <strong>Co robimy:</strong> zastępujemy poprzednią definicję wskazanej metody.</p>
+<p>Zastępujemy tylko tę metodę. Deklaracja w nagłówku pozostaje bez zmian. Pętla uruchom także pozostaje taka sama.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>bool Symulator::kolejkaPusta() const {
+    if (strategia == Strategia::FIFO) {
+        return fifo.empty();
+    }
+    return fee.empty();
+}</pre>
+<p>Dopisujemy tę część do rozpoczętej wcześniej definicji. Wcięcia pokazują, które instrukcje należą do tego samego bloku.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="3-2-6-pobieramy-wed-ug-strategii">3.2.6. Pobieramy według strategii</h4>
+<p><strong>Plik:</strong> <code>Symulator.cpp</code>. <strong>Co robimy:</strong> zastępujemy poprzednią definicję wskazanej metody.</p>
+<p>Zastępujemy tylko tę metodę. Deklaracja w nagłówku pozostaje bez zmian. Pętla uruchom także pozostaje taka sama.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>Transakcja Symulator::pobierzTransakcje() {
+    if (strategia == Strategia::FIFO) {
+        Transakcja transakcja = fifo.front();
+        fifo.pop();
+        return transakcja;
+    }</pre>
+<p>Przez <code>front()</code> kopiujemy pierwszą transakcję FIFO. Dopiero <code>pop()</code> usuwa ją z kolejki.</p>
+<p><strong>Krok 2.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>    Transakcja transakcja = fee.top();
+    fee.pop();
+    return transakcja;
+}</pre>
+<p>Przez <code>top()</code> kopiujemy transakcję o najwyższym priorytecie FEE. Dopiero <code>pop()</code> usuwa ją z kolejki.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<p>Na próbę w main zmieniamy tylko Strategia::FIFO na Strategia::FEE. Nazwa obiektu fifo i pliku wyniki_fifo.txt pozostaje robocza podczas tej próby; rozdzielimy je w 3.5.</p>
+<p><strong>Przystanek: kolejka priorytetowa.</strong> Kończymy podane definicje, zapisujemy pliki i kompilujemy w folderze z kodem.</p>
+<pre>g++ -std=c++17 -Wall -Wextra -pedantic main.cpp Walidator.cpp Symulator.cpp Pliki.cpp -o symulator.exe
+.\symulator.exe</pre>
+<p><strong>Oczekiwany wynik:</strong> Po wybraniu FEE kolejność ID wynosi 2,3,1, a starty i końce nadal 0/2, 2/4, 4/6. Przy równych fee i nadejściach kolejność wynosi 1,2,3. Po teście przywracamy Strategia::FIFO w main. Jeśli kompilator zgłasza błąd, poprawiamy pierwszy komunikat przed następnym krokiem.</p>
+<h3 id="3-3-dodajemy-wyb-r-wed-ug-stake">3.3. Dodajemy wybór według stake</h3>
+<p>Najpierw używamy ręcznie przygotowanej listy ułamków 0.5. W ten sposób sprawdzamy przedziały bez losowania. Generator dopiszemy w 3.4. Wszystkie zmiany w 3.3 kończymy przed kompilacją, bo zmieniamy jednocześnie deklarację, definicję i wywołanie konstruktora.</p>
+<h4 id="3-3-1-zapami-tujemy-list-i-jej-indeks">3.3.1. Zapamiętujemy listę i jej indeks</h4>
+<p><strong>Plik:</strong> <code>Symulator.hpp</code>. <strong>Co robimy:</strong> dopisujemy pod std::vector&lt;Walidator&gt; walidatorzy;.</p>
+<p>Dopisujemy dwa pola w private:, bezpośrednio pod listą walidatorzy. Na jeden udany przydział użyjemy jednej pozycji listy.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>    std::vector&lt;double&gt; losowania;
+    std::size_t nastepneLosowanie = 0;</pre>
+<p>W <code>std::vector</code> przechowujemy listę elementów. Typ wewnątrz <code>&lt; &gt;</code> mówi, co możemy na tę listę dodawać. Tworzymy zmienną albo pole. Wartość po <code>=</code> jest wartością początkową; <code>long long</code> mieści większe liczby całkowite niż <code>int</code>, a <code>double</code> także ułamki.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="3-3-2-przekazujemy-losowania-do-konstruktora">3.3.2. Przekazujemy losowania do konstruktora</h4>
+<p><strong>Plik:</strong> <code>Symulator.hpp</code>. <strong>Co robimy:</strong> zastępujemy deklarację konstruktora.</p>
+<p>Zastępujemy deklarację z 3.1. Nowy parametr wspolneLosowania przekazujemy przed wyborem strategii.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>    Symulator(const Konfiguracja&amp; konfiguracja,
+              const std::vector&lt;Transakcja&gt;&amp; wejscie,
+              const std::vector&lt;double&gt;&amp; wspolneLosowania,
+              Strategia wybranaStrategia);</pre>
+<p>Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. W <code>std::vector</code> przechowujemy listę elementów. Typ wewnątrz <code>&lt; &gt;</code> mówi, co możemy na tę listę dodawać.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="3-3-3-kopiujemy-losowania-do-przebiegu">3.3.3. Kopiujemy losowania do przebiegu</h4>
+<p><strong>Plik:</strong> <code>Symulator.cpp</code>. <strong>Co robimy:</strong> zastępujemy definicję konstruktora.</p>
+<p>Zastępujemy konstruktor z 3.1. Dzięki kopii listy i indeksowi 0 każdy nowy przebieg używa tych samych losów od początku.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>Symulator::Symulator(const Konfiguracja&amp; konfiguracja,
+                     const std::vector&lt;Transakcja&gt;&amp; wejscie,
+                     const std::vector&lt;double&gt;&amp; wspolneLosowania,
+                     Strategia wybranaStrategia)
+    : strategia(wybranaStrategia), transakcje(wejscie), losowania(wspolneLosowania) {
+    for (const DaneWalidatora&amp; dane : konfiguracja.walidatorzy) {</pre>
+<p>Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. W <code>std::vector</code> przechowujemy listę elementów. Typ wewnątrz <code>&lt; &gt;</code> mówi, co możemy na tę listę dodawać. Na liście inicjalizacyjnej kopiujemy dane wejściowe do nowego przebiegu. Pola czasu i indeksów zaczynają od wartości 0 podanych w nagłówku. W tej pętli bierzemy po kolei elementy listy. Znak <code>&amp;</code> pozwala odwołać się do właściwego obiektu; z <code>const</code> tylko go odczytujemy.</p>
+<p><strong>Krok 2.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>        walidatorzy.push_back(Walidator(dane));
+    }
+}</pre>
+<p>Przez <code>push_back</code> dopisujemy element na koniec listy.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="3-3-4-przyjmujemy-jeden-u-amek">3.3.4. Przyjmujemy jeden ułamek</h4>
+<p><strong>Plik:</strong> <code>Symulator.hpp</code>. <strong>Co robimy:</strong> zastępujemy deklarację wybierzWalidatora.</p>
+<p>Zastępujemy deklarację bez parametrów. Double losowanie ma należeć do [0,1). Zwracamy indeks wykonawcy albo -1.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>    int wybierzWalidatora(double losowanie) const;</pre>
+<p>Dopisujemy tę część do rozpoczętej wcześniej definicji. Wcięcia pokazują, które instrukcje należą do tego samego bloku.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="3-3-5-piszemy-wyb-r-po-przedzia-ach">3.3.5. Piszemy wybór po przedziałach</h4>
+<p><strong>Plik:</strong> <code>Symulator.cpp</code>. <strong>Co robimy:</strong> zastępujemy całą metodę wybierzWalidatora.</p>
+<p>Zastępujemy wybór pierwszego wolnego wykonawcy. Dla wolnych stake 10 i 30 suma wynosi 40. Pierwszy przedział to [0,10), drugi [10,40). Ułamek 0.2 daje pozycję 8, więc pierwszego; 0.5 daje pozycję 20, więc drugiego. Zajętych pomijamy w obu pętlach.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>int Symulator::wybierzWalidatora(double losowanie) const {
+    double sumaStake = 0;
+    int ostatniWolny = -1;
+    for (std::size_t i = 0; i &lt; walidatorzy.size(); ++i) {
+        if (walidatorzy[i].czyWolny()) {
+            sumaStake += walidatorzy[i].pobierzStake();</pre>
+<p>Tworzymy zmienną albo pole. Wartość po <code>=</code> jest wartością początkową; <code>long long</code> mieści większe liczby całkowite niż <code>int</code>, a <code>double</code> także ułamki. Przechodzimy przez listę według indeksów: zaczynamy od 0, kończymy przed <code>size()</code>, a po każdym obrocie zwiększamy i o 1. Dodajemy stake tylko wolnego walidatora. Suma wyznacza długość całego przedziału losowania.</p>
+<p><strong>Krok 2.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>            ostatniWolny = static_cast&lt;int&gt;(i);
+        }
+    }
+    if (ostatniWolny == -1) {
+        return -1;
+    }</pre>
+<p>Przez <code>static_cast&lt;typ&gt;</code> zapisujemy jawną konwersję liczby na podany typ. Przykładowo zamieniamy indeks <code>size_t</code> na zwracany <code>int</code>. Wartość -1 oznacza, że nie znaleźliśmy wolnego walidatora. Wtedy zostawiamy zadanie w kolejce.</p>
+<p><strong>Krok 3.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>    double pozycja = losowanie * sumaStake;
+    double granica = 0;
+    for (std::size_t i = 0; i &lt; walidatorzy.size(); ++i) {
+        if (walidatorzy[i].czyWolny()) {
+            granica += walidatorzy[i].pobierzStake();
+            if (pozycja &lt; granica) {</pre>
+<p>Tworzymy zmienną albo pole. Wartość po <code>=</code> jest wartością początkową; <code>long long</code> mieści większe liczby całkowite niż <code>int</code>, a <code>double</code> także ułamki. Przeliczamy ułamek z zakresu [0, 1) na pozycję w przedziale sumy stake. Dla ułamka 0.5 i sumy 40 pozycja wynosi 20. Przechodzimy przez listę według indeksów: zaczynamy od 0, kończymy przed <code>size()</code>, a po każdym obrocie zwiększamy i o 1. Dokładamy kolejny przedział stake. Pierwszy przedział z końcem większym od pozycji wskazuje wybranego wykonawcę.</p>
+<p><strong>Krok 4.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>                return static_cast&lt;int&gt;(i);
+            }
+        }
+    }
+    return ostatniWolny;
+}</pre>
+<p>Przez <code>static_cast&lt;typ&gt;</code> zapisujemy jawną konwersję liczby na podany typ. Przykładowo zamieniamy indeks <code>size_t</code> na zwracany <code>int</code>. Na wypadek zaokrągleń liczb double zwracamy ostatniego wolnego walidatora. Do tego miejsca nie wybieramy zajętego wykonawcy.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="3-3-6-zu-ywamy-los-po-udanym-przydziale">3.3.6. Zużywamy los po udanym przydziale</h4>
+<p><strong>Plik:</strong> <code>Symulator.cpp</code>. <strong>Co robimy:</strong> zastępujemy metodę przydzielZadania.</p>
+<p>Zastępujemy metodę przydzielZadania. Używamy kolejnej wartości dopiero wtedy, gdy mamy transakcję w kolejce. Lista ma N wartości; każdy udany przydział usuwa jedno z N zadań. Przy braku wolnych wykonawców nie zdejmujemy zadania i nie zwiększamy indeksu.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>void Symulator::przydzielZadania() {
+    while (!kolejkaPusta()) {
+        int indeks = wybierzWalidatora(losowania[nastepneLosowanie]);
+        if (indeks == -1) {
+            break;
+        }</pre>
+<p>Przydzielamy zadania, dopóki w kolejce coś czeka. Jeśli nie znajdziemy wolnego wykonawcy, przerwiemy tę pętlę przez <code>break</code>. Tworzymy zmienną albo pole. Wartość po <code>=</code> jest wartością początkową; <code>long long</code> mieści większe liczby całkowite niż <code>int</code>, a <code>double</code> także ułamki. Wartość -1 oznacza, że nie znaleźliśmy wolnego walidatora. Wtedy zostawiamy zadanie w kolejce.</p>
+<p><strong>Krok 2.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>        Transakcja transakcja = pobierzTransakcje();
+        walidatorzy[indeks].rozpocznij(transakcja, czas);
+        ++nastepneLosowanie;
+    }
+}</pre>
+<p>Przekazujemy wybraną transakcję wolnemu walidatorowi. Zaczyna ją w bieżącym czasie symulacji. Zużywamy los dopiero po udanym przydziale. Nie przesuwamy indeksu, gdy wszyscy walidatorzy są zajęci.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="3-3-7-podajemy-r-czne-warto-ci-testowe">3.3.7. Podajemy ręczne wartości testowe</h4>
+<p><strong>Plik:</strong> <code>main.cpp</code>. <strong>Co robimy:</strong> zastępujemy wiersz tworzący fifo.</p>
+<p>Zastępujemy jeden wiersz tworzący fifo tymi dwoma wierszami. Konstruktor vector z rozmiarem i wartością tworzy N jednakowych ułamków. Nie losujemy ich jeszcze.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>        std::vector&lt;double&gt; losowania(transakcje.size(), 0.5);
+        Symulator fifo(konfiguracja, transakcje, losowania, Strategia::FIFO);</pre>
+<p>W <code>std::vector</code> przechowujemy listę elementów. Typ wewnątrz <code>&lt; &gt;</code> mówi, co możemy na tę listę dodawać. Tworzymy nowy obiekt na ten przebieg. Zaczynamy od czasu 0 i wolnych walidatorów, niezależnie od poprzedniej strategii.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<p><strong>Przystanek: przedziały stake.</strong> Kończymy podane definicje, zapisujemy pliki i kompilujemy w folderze z kodem.</p>
+<pre>g++ -std=c++17 -Wall -Wextra -pedantic main.cpp Walidator.cpp Symulator.cpp Pliki.cpp -o symulator.exe
+.\symulator.exe</pre>
+<p><strong>Oczekiwany wynik:</strong> Dla jednego walidatora wyniki są takie same jak wcześniej. Dla konfiguracji <code>2 12345</code>, <code>1 10</code>, <code>2 30</code> i jednej transakcji wybieramy ID 2 przy ułamku 0.5, a ID 1 po zmianie na 0.2. Przywracamy konfigurację i 0.5 po próbie. Jeśli kompilator zgłasza błąd, poprawiamy pierwszy komunikat przed następnym krokiem.</p>
+<h3 id="3-4-generujemy-wsp-lne-losowania-z-ziarna">3.4. Generujemy wspólne losowania z ziarna</h3>
+<h4 id="3-4-1-do-czamy-bibliotek-losowania">3.4.1. Dołączamy bibliotekę losowania</h4>
+<p><strong>Plik:</strong> <code>main.cpp</code>. <strong>Co robimy:</strong> dopisujemy jeden include.</p>
+<p>Dopisujemy obok pozostałych include na początku main.cpp.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>#include &lt;random&gt;</pre>
+<p>Przez <code>#include</code> dołączamy deklaracje, których używamy niżej. Cudzysłowów używamy przy naszych plikach, a znaków <code>&lt; &gt;</code> przy bibliotece C++.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="3-4-2-przygotowujemy-n-los-w">3.4.2. Przygotowujemy N losów</h4>
+<p><strong>Plik:</strong> <code>main.cpp</code>. <strong>Co robimy:</strong> dopisujemy funkcję przed main.</p>
+<p>Dopisujemy przed int main(). Liczba to liczba transakcji, ziarno odczytujemy z konfiguracji. Funkcja zwraca vector ułamków. Raz przygotowaną listę przekażemy obu strategiom.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>std::vector&lt;double&gt; przygotujLosowania(std::size_t liczba, unsigned int ziarno) {
+    std::mt19937 generator(ziarno);
+    std::uniform_real_distribution&lt;double&gt; losuj(0.0, 1.0);
+    std::vector&lt;double&gt; losowania;
+    for (std::size_t i = 0; i &lt; liczba; ++i) {
+        losowania.push_back(losuj(generator));</pre>
+<p>W <code>std::vector</code> przechowujemy listę elementów. Typ wewnątrz <code>&lt; &gt;</code> mówi, co możemy na tę listę dodawać. Tworzymy generator z wybranym ziarnem, tak jak seed ustala powtarzalny świat w Minecraft. Tutaj ustala kolejność losowanych liczb. Wybieramy równomierne losowanie ułamka od 0 włącznie do 1 wyłącznie. To jeszcze nie wybór walidatora: wykorzystamy ułamek w przedziałach stake. Przechodzimy przez listę według indeksów: zaczynamy od 0, kończymy przed <code>size()</code>, a po każdym obrocie zwiększamy i o 1.</p>
+<p><strong>Krok 2.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>    }
+    return losowania;
+}</pre>
+<p>Dopisujemy tę część do rozpoczętej wcześniej definicji. Wcięcia pokazują, które instrukcje należą do tego samego bloku.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="3-4-3-zast-pujemy-r-czne-u-amki">3.4.3. Zastępujemy ręczne ułamki</h4>
+<p><strong>Plik:</strong> <code>main.cpp</code>. <strong>Co robimy:</strong> zastępujemy wiersz tworzący listę ręcznych losów.</p>
+<p>Zastępujemy tylko wiersz vector z 0.5. Wywołania konstruktora fifo poniżej nie zmieniamy.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>        std::vector&lt;double&gt; losowania = przygotujLosowania(
+            transakcje.size(), konfiguracja.ziarno);</pre>
+<p>W <code>std::vector</code> przechowujemy listę elementów. Typ wewnątrz <code>&lt; &gt;</code> mówi, co możemy na tę listę dodawać.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<p><strong>Przystanek: ziarno.</strong> Kończymy podane definicje, zapisujemy pliki i kompilujemy w folderze z kodem.</p>
+<pre>g++ -std=c++17 -Wall -Wextra -pedantic main.cpp Walidator.cpp Symulator.cpp Pliki.cpp -o symulator.exe
+.\symulator.exe</pre>
+<p><strong>Oczekiwany wynik:</strong> Dwa uruchomienia z tym samym wejściem i ziarnem zapisują identyczną zawartość wyniki_fifo.txt. Sprawdzamy w tym samym środowisku kompilacji. Przy jednym walidatorze zmiana ziarna nie zmieni przydziału. Jeśli kompilator zgłasza błąd, poprawiamy pierwszy komunikat przed następnym krokiem.</p>
+<h3 id="3-5-uruchamiamy-oba-warianty">3.5. Uruchamiamy oba warianty</h3>
+<h4 id="3-5-1-dodajemy-drugi-przebieg">3.5.1. Dodajemy drugi przebieg</h4>
+<p><strong>Plik:</strong> <code>main.cpp</code>. <strong>Co robimy:</strong> zastępujemy funkcję main od int main() do jej ostatniej klamry.</p>
+<p>Zastępujemy tylko funkcję main. Include oraz przygotujLosowania z 3.4 zostawiamy nad nią. Wczytujemy dane i generujemy listę raz. Tworzymy osobny obiekt FIFO i osobny FEE. Wynik drugiego przebiegu nie korzysta ze stanu pierwszego.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>int main() {
+    try {
+        Konfiguracja konfiguracja = Pliki::wczytajKonfiguracje(&quot;konfiguracja.txt&quot;);
+        std::vector&lt;Transakcja&gt; transakcje = Pliki::wczytajTransakcje(&quot;zgloszenia.txt&quot;);
+        std::vector&lt;double&gt; losowania = przygotujLosowania(
+            transakcje.size(), konfiguracja.ziarno);</pre>
+<p>W bloku try wykonujemy czynności, które mogą zgłosić błąd. Pasujący catch wpiszemy po zamknięciu tego bloku. Wywołujemy metodę Pliki i zapamiętujemy zwrócone dane. Ścieżkę liczymy od folderu, z którego uruchomiliśmy program. W <code>std::vector</code> przechowujemy listę elementów. Typ wewnątrz <code>&lt; &gt;</code> mówi, co możemy na tę listę dodawać.</p>
+<p><strong>Krok 2.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>        Symulator fifo(konfiguracja, transakcje, losowania, Strategia::FIFO);
+        std::vector&lt;WynikTransakcji&gt; wynikiFifo = fifo.uruchom();
+        Pliki::zapiszWyniki(&quot;wyniki_fifo.txt&quot;, wynikiFifo);</pre>
+<p>Tworzymy nowy obiekt na ten przebieg. Zaczynamy od czasu 0 i wolnych walidatorów, niezależnie od poprzedniej strategii. W <code>std::vector</code> przechowujemy listę elementów. Typ wewnątrz <code>&lt; &gt;</code> mówi, co możemy na tę listę dodawać. Uruchamiamy cały przebieg i odbieramy listę zakończonych transakcji. Zapisujemy wyniki pod wskazaną nazwą. FIFO i FEE mają osobne pliki.</p>
+<p><strong>Krok 3.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>        Symulator fee(konfiguracja, transakcje, losowania, Strategia::FEE);
+        std::vector&lt;WynikTransakcji&gt; wynikiFee = fee.uruchom();
+        Pliki::zapiszWyniki(&quot;wyniki_fee.txt&quot;, wynikiFee);</pre>
+<p>Tworzymy nowy obiekt na ten przebieg. Zaczynamy od czasu 0 i wolnych walidatorów, niezależnie od poprzedniej strategii. W <code>std::vector</code> przechowujemy listę elementów. Typ wewnątrz <code>&lt; &gt;</code> mówi, co możemy na tę listę dodawać. Uruchamiamy cały przebieg i odbieramy listę zakończonych transakcji. Zapisujemy wyniki pod wskazaną nazwą. FIFO i FEE mają osobne pliki.</p>
+<p><strong>Krok 4.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>        std::cout &lt;&lt; &quot;Zapisano wyniki_fifo.txt i wyniki_fee.txt\n&quot;;
+        return 0;
+    } catch (const std::exception&amp; blad) {
+        std::cerr &lt;&lt; &quot;Blad: &quot; &lt;&lt; blad.what() &lt;&lt; &#x27;\n&#x27;;</pre>
+<p>Przez <code>cout &lt;&lt;</code> wypisujemy dane na ekran. Spacje rozdzielają wartości, a <code>\n</code> kończy wiersz; <code>cerr</code> służy do komunikatów o błędach. W main przez return 0 kończymy program i oznaczamy, że zakończył się poprawnie. Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. Przechwytujemy błąd. Przez what() odczytujemy jego opis, wypisujemy go na cerr i kończymy program kodem 1.</p>
+<p><strong>Krok 5.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>        return 1;
+    }
+}</pre>
+<p>Dopisujemy tę część do rozpoczętej wcześniej definicji. Wcięcia pokazują, które instrukcje należą do tego samego bloku.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<p><strong>Przystanek: koniec etapu 3.</strong> Kończymy podane definicje, zapisujemy pliki i kompilujemy w folderze z kodem.</p>
+<pre>g++ -std=c++17 -Wall -Wextra -pedantic main.cpp Walidator.cpp Symulator.cpp Pliki.cpp -o symulator.exe
+.\symulator.exe</pre>
+<p><strong>Oczekiwany wynik:</strong> Powstają dwa pliki. FIFO ma kolejność 1,2,3; FEE 2,3,1. Oba zawierają trzy wyniki. Zbiorcze pomiary dopiszemy w etapie 5. Jeśli kompilator zgłasza błąd, poprawiamy pierwszy komunikat przed następnym krokiem.</p>
+<p>Sprawdzamy także dwa walidatory i więcej zadań niż wykonawców: każda transakcja kończy się raz, a zadania jednego wykonawcy nie nakładają się. Porównujemy powtórzone uruchomienia obu strategii. Zajęty walidator nie bierze udziału w losowaniu. Wyniki tych prób wpisujemy do opisu.</p>
+<h2 id="etap-4-opisujemy-koszt-dzia-ania-programu">Etap 4. Opisujemy koszt działania programu</h2>
+<p>Zadanie 4. Przewidujemy 3–4 godziny.</p>
+<h3 id="4-1-zapisujemy-znaczenie-symboli">4.1. Zapisujemy znaczenie symboli</h3>
+<ul>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-16" aria-checked="false" aria-label="Tworzymy `zlozonosc.md`.">☐</span> Tworzymy <code>zlozonosc.md</code>.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-17" aria-checked="false" aria-label="Zapisujemy: N to liczba transakcji, K to liczba walidatorów, T to liczba wykonanych kroków czasu.">☐</span> Zapisujemy: N to liczba transakcji, K to liczba walidatorów, T to liczba wykonanych kroków czasu.</li>
+</ul>
+<p><strong>Wynik:</strong> początek opisu złożoności. T oznacza kroki symulacji, a nie sekundy działania komputera.</p>
+<h3 id="4-2-opisujemy-kolejki">4.2. Opisujemy kolejki</h3>
+<ul>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-18" aria-checked="false" aria-label="FIFO: dodanie i usunięcie elementu kosztują O(1).">☐</span> FIFO: dodanie i usunięcie elementu kosztują O(1).</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-19" aria-checked="false" aria-label="FEE: dodanie i usunięcie kosztują O(log N), a podejrzenie pierwszego elementu O(1).">☐</span> FEE: dodanie i usunięcie kosztują O(log N), a podejrzenie pierwszego elementu O(1).</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-20" aria-checked="false" aria-label="Dopisujemy jedno zdanie wyjaśnienia: O(1) oznacza stały koszt operacji; O(log N) rośnie wraz z rozmiarem kolejki.">☐</span> Dopisujemy jedno zdanie wyjaśnienia: O(1) oznacza stały koszt operacji; O(log N) rośnie wraz z rozmiarem kolejki.</li>
+</ul>
+<p><strong>Wynik:</strong> tabela operacji obu kolejek w <code>zlozonosc.md</code>.</p>
+<h3 id="4-3-liczymy-p-tle">4.3. Liczymy pętle</h3>
+<ul>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-21" aria-checked="false" aria-label="Zaznaczamy w kodzie sprawdzanie K walidatorów w każdym kroku: O(TK).">☐</span> Zaznaczamy w kodzie sprawdzanie K walidatorów w każdym kroku: O(TK).</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-22" aria-checked="false" aria-label="Zaznaczamy wybór wykonawcy przez przegląd walidatorów dla N przydziałów: O(NK). Po dopisaniu Statystyki w etapie 5 uzupełniamy analizę o liczenie wykorzystania: O(NK), bo dla każdego walidatora przeglądamy wyniki.">☐</span> Zaznaczamy wybór wykonawcy przez przegląd walidatorów dla N przydziałów: O(NK). Po dopisaniu Statystyki w etapie 5 uzupełniamy analizę o liczenie wykorzystania: O(NK), bo dla każdego walidatora przeglądamy wyniki.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-23" aria-checked="false" aria-label="Dodajemy sortowanie transakcji: O(N log N) i danych walidatorów: O(K log K).">☐</span> Dodajemy sortowanie transakcji: O(N log N) i danych walidatorów: O(K log K).</li>
+</ul>
+<p><strong>Wynik:</strong> opis, który wskazuje konkretne pętle i operacje w naszym kodzie.</p>
+<h3 id="4-4-zapisujemy-koszt-ca-o-ci-i-pami-ci">4.4. Zapisujemy koszt całości i pamięci</h3>
+<ul>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-24" aria-checked="false" aria-label="Dla tego modelu zapisujemy O(N log(N + 1) + K log(K + 1) + TK + NK). Dodanie 1 w logarytmach pozwala objąć też puste wejście i jednego walidatora.">☐</span> Dla tego modelu zapisujemy O(N log(N + 1) + K log(K + 1) + TK + NK). Dodanie 1 w logarytmach pozwala objąć też puste wejście i jednego walidatora.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-25" aria-checked="false" aria-label="Wyjaśniamy, że koszt kolejek różni się, nawet gdy po uwzględnieniu sortowania otrzymujemy tę samą ogólną granicę.">☐</span> Wyjaśniamy, że koszt kolejek różni się, nawet gdy po uwzględnieniu sortowania otrzymujemy tę samą ogólną granicę.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-26" aria-checked="false" aria-label="Szacujemy pamięć jako O(N + K), jeśli przechowujemy transakcje, losowania, wyniki i walidatorów.">☐</span> Szacujemy pamięć jako O(N + K), jeśli przechowujemy transakcje, losowania, wyniki i walidatorów.</li>
+</ul>
+<p><strong>Wynik:</strong> opis czasu i pamięci. Jeśli dodamy inne pętle lub zapisy, uwzględniamy je w obliczeniach.</p>
+<h3 id="4-5-opisujemy-ograniczenia">4.5. Opisujemy ograniczenia</h3>
+<ul>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-27" aria-checked="false" aria-label="Wyjaśniamy, że długa przerwa między transakcjami zwiększa liczbę kroków T.">☐</span> Wyjaśniamy, że długa przerwa między transakcjami zwiększa liczbę kroków T.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-28" aria-checked="false" aria-label="Opisujemy długie oczekiwanie niskiego fee przy napływie transakcji z wysokim fee.">☐</span> Opisujemy długie oczekiwanie niskiego fee przy napływie transakcji z wysokim fee.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-29" aria-checked="false" aria-label="Czytamy opis we dwoje i pokazujemy sobie odpowiadające mu fragmenty kodu.">☐</span> Czytamy opis we dwoje i pokazujemy sobie odpowiadające mu fragmenty kodu.</li>
+</ul>
+<p><strong>Na koniec etapu:</strong> <code>zlozonosc.md</code> i potrafimy uzasadnić podane koszty.</p>
+<h2 id="etap-5-zbieramy-wyniki-i-piszemy-sprawozdanie">Etap 5. Zbieramy wyniki i piszemy sprawozdanie</h2>
+<p>Teraz dokładamy zbiorcze statystyki do działających przebiegów. Oczekiwanie, deadline i opóźnienie pojedynczej transakcji mamy już w wynikach z etapu 2. Tu obliczamy średnią, maksimum, liczby terminowych i spóźnionych oraz wykorzystanie. Tworzymy dwa nowe pliki Statystyki.</p>
+<h3 id="5-1-dodajemy-podsumowanie-i-obliczenia">5.1. Dodajemy podsumowanie i obliczenia</h3>
+<h4 id="5-1-1-dodajemy-rekord-podsumowanie">5.1.1. Dodajemy rekord Podsumowanie</h4>
+<p><strong>Plik:</strong> <code>Dane.hpp</code>. <strong>Co robimy:</strong> dopisujemy po istniejących definicjach.</p>
+<p>Dopisujemy na końcu nagłówka. Pola zaczynają od 0, a wykorzystanie od pustej listy. Wpiszemy do niej jeden procent na walidatora, w kolejności z konfiguracji.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>struct Podsumowanie {
+    long long liczbaObsluzonych = 0;
+    double srednieOczekiwanie = 0;
+    long long maksymalneOczekiwanie = 0;
+    long long terminowe = 0;
+    long long spoznione = 0;</pre>
+<p>Zaczynamy rekord <code>Podsumowanie</code>. Między jego klamrami wpisujemy pola, które przechowujemy razem. Tworzymy zmienną albo pole. Wartość po <code>=</code> jest wartością początkową; <code>long long</code> mieści większe liczby całkowite niż <code>int</code>, a <code>double</code> także ułamki.</p>
+<p><strong>Krok 2.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>    long long czasKonca = 0;
+    std::vector&lt;double&gt; wykorzystanie;
+};</pre>
+<p>Tworzymy zmienną albo pole. Wartość po <code>=</code> jest wartością początkową; <code>long long</code> mieści większe liczby całkowite niż <code>int</code>, a <code>double</code> także ułamki. W <code>std::vector</code> przechowujemy listę elementów. Typ wewnątrz <code>&lt; &gt;</code> mówi, co możemy na tę listę dodawać.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="5-1-2-deklarujemy-obliczenia">5.1.2. Deklarujemy obliczenia</h4>
+<p><strong>Plik:</strong> <code>Statystyki.hpp</code>. <strong>Co robimy:</strong> nowy plik.</p>
+<p>Metoda statyczna oblicz przyjmuje wyniki, początkowych walidatorów i czas końca. Oddaje Podsumowanie. Nie przechowujemy stanu w obiekcie Statystyki.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>#pragma once</pre>
+<p>Przez <code>#pragma once</code> prosimy kompilator, żeby dołączył ten nagłówek tylko raz w danym pliku .cpp.</p>
+<p><strong>Krok 2.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>#include &quot;Dane.hpp&quot;</pre>
+<p>Przez <code>#include</code> dołączamy deklaracje, których używamy niżej. Cudzysłowów używamy przy naszych plikach, a znaków <code>&lt; &gt;</code> przy bibliotece C++.</p>
+<p><strong>Krok 3.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>class Statystyki {
+public:
+    static Podsumowanie oblicz(const std::vector&lt;WynikTransakcji&gt;&amp; wyniki,
+                              const std::vector&lt;DaneWalidatora&gt;&amp; walidatorzy,
+                              long long czasKonca);
+};</pre>
+<p>Zaczynamy klasę. Łączymy w niej dane obiektu z metodami, przez które z niego korzystamy. Pod <code>public:</code> wpisujemy metody dostępne z innych części programu. Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. W <code>std::vector</code> przechowujemy listę elementów. Typ wewnątrz <code>&lt; &gt;</code> mówi, co możemy na tę listę dodawać.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="5-1-3-definiujemy-pomiary">5.1.3. Definiujemy pomiary</h4>
+<p><strong>Plik:</strong> <code>Statystyki.cpp</code>. <strong>Co robimy:</strong> nowy plik.</p>
+<p>Najpierw przechodzimy przez wyniki: sumujemy oczekiwanie, wybieramy maksimum i zliczamy terminy. Następnie dla każdego walidatora sumujemy czasy jego zadań. Wykorzystanie = 100 razy czas pracy / czas końca przebiegu od 0. Przy pustym wejściu zostawiamy zera, żeby nie dzielić przez 0. Dwie zagnieżdżone pętle wykorzystania dają O(NK); dopisujemy to w zlozonosc.md z etapu 4.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>#include &quot;Statystyki.hpp&quot;</pre>
+<p>Przez <code>#include</code> dołączamy deklaracje, których używamy niżej. Cudzysłowów używamy przy naszych plikach, a znaków <code>&lt; &gt;</code> przy bibliotece C++.</p>
+<p><strong>Krok 2.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>#include &lt;algorithm&gt;</pre>
+<p>Przez <code>#include</code> dołączamy deklaracje, których używamy niżej. Cudzysłowów używamy przy naszych plikach, a znaków <code>&lt; &gt;</code> przy bibliotece C++.</p>
+<p><strong>Krok 3.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>Podsumowanie Statystyki::oblicz(const std::vector&lt;WynikTransakcji&gt;&amp; wyniki,
+                              const std::vector&lt;DaneWalidatora&gt;&amp; walidatorzy,
+                              long long czasKonca) {
+    Podsumowanie podsumowanie;
+    podsumowanie.liczbaObsluzonych = static_cast&lt;long long&gt;(wyniki.size());
+    podsumowanie.czasKonca = czasKonca;</pre>
+<p>Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. W <code>std::vector</code> przechowujemy listę elementów. Typ wewnątrz <code>&lt; &gt;</code> mówi, co możemy na tę listę dodawać. Przez <code>static_cast&lt;typ&gt;</code> zapisujemy jawną konwersję liczby na podany typ. Przykładowo zamieniamy indeks <code>size_t</code> na zwracany <code>int</code>.</p>
+<p><strong>Krok 4.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>    double sumaOczekiwania = 0;
+    for (const WynikTransakcji&amp; wynik : wyniki) {
+        sumaOczekiwania += wynik.oczekiwanie;
+        podsumowanie.maksymalneOczekiwanie = std::max(
+            podsumowanie.maksymalneOczekiwanie, wynik.oczekiwanie);
+        if (wynik.terminowo) {</pre>
+<p>Tworzymy zmienną albo pole. Wartość po <code>=</code> jest wartością początkową; <code>long long</code> mieści większe liczby całkowite niż <code>int</code>, a <code>double</code> także ułamki. Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. W tej pętli bierzemy po kolei elementy listy. Znak <code>&amp;</code> pozwala odwołać się do właściwego obiektu; z <code>const</code> tylko go odczytujemy. Dodajemy oczekiwanie do sumy. W <code>std::max</code> wybieramy największe dotychczasowe oczekiwanie.</p>
+<p><strong>Krok 5.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>            ++podsumowanie.terminowe;
+        } else {
+            ++podsumowanie.spoznione;
+        }
+    }
+    if (!wyniki.empty()) {</pre>
+<p>Średnią liczymy tylko dla niepustej listy, żeby nie dzielić przez zero. Przy pustej zostawiamy początkową wartość 0.</p>
+<p><strong>Krok 6.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>        podsumowanie.srednieOczekiwanie = sumaOczekiwania / wyniki.size();
+    }
+    for (const DaneWalidatora&amp; walidator : walidatorzy) {
+        long long czasPracy = 0;
+        for (const WynikTransakcji&amp; wynik : wyniki) {
+            if (wynik.idWalidatora == walidator.id) {</pre>
+<p>Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. W tej pętli bierzemy po kolei elementy listy. Znak <code>&amp;</code> pozwala odwołać się do właściwego obiektu; z <code>const</code> tylko go odczytujemy. Tworzymy zmienną albo pole. Wartość po <code>=</code> jest wartością początkową; <code>long long</code> mieści większe liczby całkowite niż <code>int</code>, a <code>double</code> także ułamki.</p>
+<p><strong>Krok 7.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>                czasPracy += wynik.koniec - wynik.start;
+            }
+        }
+        double procent = 0;
+        if (czasKonca &gt; 0) {
+            procent = 100.0 * czasPracy / czasKonca;</pre>
+<p>Sumujemy czas pracy danego walidatora. Bierzemy tylko wyniki, w których idWalidatora zgadza się z jego ID. Tworzymy zmienną albo pole. Wartość po <code>=</code> jest wartością początkową; <code>long long</code> mieści większe liczby całkowite niż <code>int</code>, a <code>double</code> także ułamki. Przeliczamy zajętość na procent całego przebiegu od czasu 0. Dla pracy 2 i końca przebiegu 5 otrzymujemy 40%, a nie 100%.</p>
+<p><strong>Krok 8.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>        }
+        podsumowanie.wykorzystanie.push_back(procent);
+    }
+    return podsumowanie;
+}</pre>
+<p>Przez <code>push_back</code> dopisujemy element na koniec listy.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="5-1-4-rozszerzamy-deklaracj-zapisu">5.1.4. Rozszerzamy deklarację zapisu</h4>
+<p><strong>Plik:</strong> <code>Pliki.hpp</code>. <strong>Co robimy:</strong> zastępujemy tylko deklarację zapiszWyniki.</p>
+<p>Zastępujemy starą deklarację zapiszWyniki. Nowe parametry to Podsumowanie i lista danych wykonawców. Nazwy w deklaracji i definicji muszą się zgadzać co do typów i kolejności.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>    static void zapiszWyniki(const std::string&amp; nazwa,
+                            const std::vector&lt;WynikTransakcji&gt;&amp; wyniki,
+                            const Podsumowanie&amp; podsumowanie,
+                            const std::vector&lt;DaneWalidatora&gt;&amp; walidatorzy);</pre>
+<p>Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. W <code>std::vector</code> przechowujemy listę elementów. Typ wewnątrz <code>&lt; &gt;</code> mówi, co możemy na tę listę dodawać.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="5-1-5-dodajemy-formatowanie-u-amk-w">5.1.5. Dodajemy formatowanie ułamków</h4>
+<p><strong>Plik:</strong> <code>Pliki.cpp</code>. <strong>Co robimy:</strong> dopisujemy include na początku pliku.</p>
+<p>Dopisujemy obok innych include. Będziemy zapisywać średnią i procenty z dwoma cyframi po kropce.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>#include &lt;iomanip&gt;</pre>
+<p>Przez <code>#include</code> dołączamy deklaracje, których używamy niżej. Cudzysłowów używamy przy naszych plikach, a znaków <code>&lt; &gt;</code> przy bibliotece C++.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="5-1-6-rozszerzamy-zapis-wynik-w">5.1.6. Rozszerzamy zapis wyników</h4>
+<p><strong>Plik:</strong> <code>Pliki.cpp</code>. <strong>Co robimy:</strong> zastępujemy całą definicję zapiszWyniki.</p>
+<p>Zastępujemy metodę zapisu z etapu 2. Zachowujemy wiersze transakcji i dopisujemy PODSUMOWANIE. Nie zmieniamy odczytu konfiguracji ani transakcji.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>void Pliki::zapiszWyniki(const std::string&amp; nazwa,
+                        const std::vector&lt;WynikTransakcji&gt;&amp; wyniki,
+                        const Podsumowanie&amp; podsumowanie,
+                        const std::vector&lt;DaneWalidatora&gt;&amp; walidatorzy) {
+    std::ofstream plik(nazwa);
+    if (!plik) {</pre>
+<p>Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. W <code>std::vector</code> przechowujemy listę elementów. Typ wewnątrz <code>&lt; &gt;</code> mówi, co możemy na tę listę dodawać. Otwieramy plik do zapisu. Istniejącą zawartość tego pliku nadpisujemy przy każdym udanym otwarciu.</p>
+<p><strong>Krok 2.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>        throw std::runtime_error(&quot;Nie mozna zapisac &quot; + nazwa);
+    }
+    plik &lt;&lt; &quot;id_transakcji id_walidatora nadejscie start koniec &quot;
+         &lt;&lt; &quot;oczekiwanie deadline opoznienie terminowo\n&quot;;
+    for (const WynikTransakcji&amp; wynik : wyniki) {
+        plik &lt;&lt; wynik.idTransakcji &lt;&lt; &#x27; &#x27; &lt;&lt; wynik.idWalidatora &lt;&lt; &#x27; &#x27;</pre>
+<p>Przez <code>throw</code> przerywamy tę operację i przekazujemy opis błędu do <code>catch</code> w main. Nie pracujemy dalej na niepoprawnych danych. Operatorem <code>&lt;&lt;</code> dopisujemy dane do pliku. Spacje rozdzielają kolumny, a <code>\n</code> kończy wiersz. Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. W tej pętli bierzemy po kolei elementy listy. Znak <code>&amp;</code> pozwala odwołać się do właściwego obiektu; z <code>const</code> tylko go odczytujemy.</p>
+<p><strong>Krok 3.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>             &lt;&lt; wynik.nadejscie &lt;&lt; &#x27; &#x27; &lt;&lt; wynik.start &lt;&lt; &#x27; &#x27; &lt;&lt; wynik.koniec &lt;&lt; &#x27; &#x27;
+             &lt;&lt; wynik.oczekiwanie &lt;&lt; &#x27; &#x27; &lt;&lt; wynik.deadline &lt;&lt; &#x27; &#x27;
+             &lt;&lt; wynik.opoznienie &lt;&lt; &#x27; &#x27; &lt;&lt; wynik.terminowo &lt;&lt; &#x27;\n&#x27;;
+    }
+    plik &lt;&lt; &quot;\nPODSUMOWANIE\n&quot;;
+    plik &lt;&lt; &quot;liczba_obsluzonych &quot; &lt;&lt; podsumowanie.liczbaObsluzonych &lt;&lt; &#x27;\n&#x27;;</pre>
+<p>Operatorem <code>&lt;&lt;</code> dopisujemy dane do pliku. Spacje rozdzielają kolumny, a <code>\n</code> kończy wiersz.</p>
+<p><strong>Krok 4.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>    plik &lt;&lt; std::fixed &lt;&lt; std::setprecision(2);
+    plik &lt;&lt; &quot;srednie_oczekiwanie &quot; &lt;&lt; podsumowanie.srednieOczekiwanie &lt;&lt; &#x27;\n&#x27;;
+    plik &lt;&lt; &quot;maksymalne_oczekiwanie &quot; &lt;&lt; podsumowanie.maksymalneOczekiwanie &lt;&lt; &#x27;\n&#x27;;
+    plik &lt;&lt; &quot;terminowe &quot; &lt;&lt; podsumowanie.terminowe &lt;&lt; &#x27;\n&#x27;;
+    plik &lt;&lt; &quot;spoznione &quot; &lt;&lt; podsumowanie.spoznione &lt;&lt; &#x27;\n&#x27;;
+    plik &lt;&lt; &quot;czas_konca &quot; &lt;&lt; podsumowanie.czasKonca &lt;&lt; &#x27;\n&#x27;;</pre>
+<p>Operatorem <code>&lt;&lt;</code> dopisujemy dane do pliku. Spacje rozdzielają kolumny, a <code>\n</code> kończy wiersz. Przez fixed i setprecision(2) zapisujemy średnią i procent z dwoma cyframi po kropce.</p>
+<p><strong>Krok 5.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>    for (std::size_t i = 0; i &lt; walidatorzy.size(); ++i) {
+        plik &lt;&lt; &quot;wykorzystanie &quot; &lt;&lt; walidatorzy[i].id &lt;&lt; &#x27; &#x27;
+             &lt;&lt; podsumowanie.wykorzystanie[i] &lt;&lt; &#x27;\n&#x27;;
+    }
+    plik.flush();
+    if (!plik) {</pre>
+<p>Przechodzimy przez listę według indeksów: zaczynamy od 0, kończymy przed <code>size()</code>, a po każdym obrocie zwiększamy i o 1. Operatorem <code>&lt;&lt;</code> dopisujemy dane do pliku. Spacje rozdzielają kolumny, a <code>\n</code> kończy wiersz. Przekazujemy bufor zapisu do pliku i sprawdzamy stan strumienia. Błąd zapisu zgłaszamy tak samo jak błąd otwarcia.</p>
+<p><strong>Krok 6.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>        throw std::runtime_error(&quot;Blad zapisu &quot; + nazwa);
+    }
+}</pre>
+<p>Przez <code>throw</code> przerywamy tę operację i przekazujemy opis błędu do <code>catch</code> w main. Nie pracujemy dalej na niepoprawnych danych.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="5-1-7-do-czamy-statystyki-do-main">5.1.7. Dołączamy Statystyki do main</h4>
+<p><strong>Plik:</strong> <code>main.cpp</code>. <strong>Co robimy:</strong> dopisujemy include na początku pliku.</p>
+<p>Dopisujemy obok naszych dwóch include. Generator i jego funkcję zostawiamy.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>#include &quot;Statystyki.hpp&quot;</pre>
+<p>Przez <code>#include</code> dołączamy deklaracje, których używamy niżej. Cudzysłowów używamy przy naszych plikach, a znaków <code>&lt; &gt;</code> przy bibliotece C++.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<h4 id="5-1-8-wywo-ujemy-pomiary-dla-obu-strategii">5.1.8. Wywołujemy pomiary dla obu strategii</h4>
+<p><strong>Plik:</strong> <code>main.cpp</code>. <strong>Co robimy:</strong> zastępujemy tylko funkcję main.</p>
+<p>Zastępujemy funkcję main z etapu 3. Po każdym uruchomieniu liczymy podsumowanie dla jego wyników i czasu końca. Wywołujemy rozszerzone zapiszWyniki z czterema argumentami. Funkcję przygotujLosowania zostawiamy nad main.</p>
+<p>Fragmenty wpisujemy w pokazanej kolejności. Drugi fragment dopisujemy pod pierwszym, następny pod poprzednim. Nie zamykamy wcześniej funkcji dodatkową klamrą.</p>
+<p><strong>Krok 1.</strong> Wpisujemy początek wskazanego kodu.</p>
+<pre>int main() {
+    try {
+        Konfiguracja konfiguracja = Pliki::wczytajKonfiguracje(&quot;konfiguracja.txt&quot;);
+        std::vector&lt;Transakcja&gt; transakcje = Pliki::wczytajTransakcje(&quot;zgloszenia.txt&quot;);
+        std::vector&lt;double&gt; losowania = przygotujLosowania(
+            transakcje.size(), konfiguracja.ziarno);</pre>
+<p>W bloku try wykonujemy czynności, które mogą zgłosić błąd. Pasujący catch wpiszemy po zamknięciu tego bloku. Wywołujemy metodę Pliki i zapamiętujemy zwrócone dane. Ścieżkę liczymy od folderu, z którego uruchomiliśmy program. W <code>std::vector</code> przechowujemy listę elementów. Typ wewnątrz <code>&lt; &gt;</code> mówi, co możemy na tę listę dodawać.</p>
+<p><strong>Krok 2.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>        Symulator fifo(konfiguracja, transakcje, losowania, Strategia::FIFO);
+        std::vector&lt;WynikTransakcji&gt; wynikiFifo = fifo.uruchom();
+        Podsumowanie statystykiFifo = Statystyki::oblicz(
+            wynikiFifo, konfiguracja.walidatorzy, fifo.pobierzCzasKonca());
+        Pliki::zapiszWyniki(&quot;wyniki_fifo.txt&quot;, wynikiFifo,
+                            statystykiFifo, konfiguracja.walidatorzy);</pre>
+<p>Tworzymy nowy obiekt na ten przebieg. Zaczynamy od czasu 0 i wolnych walidatorów, niezależnie od poprzedniej strategii. W <code>std::vector</code> przechowujemy listę elementów. Typ wewnątrz <code>&lt; &gt;</code> mówi, co możemy na tę listę dodawać. Uruchamiamy cały przebieg i odbieramy listę zakończonych transakcji. Przekazujemy listę wyników, dane walidatorów i czas końca. Odbieramy rekord podsumowania.</p>
+<p><strong>Krok 3.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>        Symulator fee(konfiguracja, transakcje, losowania, Strategia::FEE);
+        std::vector&lt;WynikTransakcji&gt; wynikiFee = fee.uruchom();
+        Podsumowanie statystykiFee = Statystyki::oblicz(
+            wynikiFee, konfiguracja.walidatorzy, fee.pobierzCzasKonca());
+        Pliki::zapiszWyniki(&quot;wyniki_fee.txt&quot;, wynikiFee,
+                            statystykiFee, konfiguracja.walidatorzy);</pre>
+<p>Tworzymy nowy obiekt na ten przebieg. Zaczynamy od czasu 0 i wolnych walidatorów, niezależnie od poprzedniej strategii. W <code>std::vector</code> przechowujemy listę elementów. Typ wewnątrz <code>&lt; &gt;</code> mówi, co możemy na tę listę dodawać. Uruchamiamy cały przebieg i odbieramy listę zakończonych transakcji. Przekazujemy listę wyników, dane walidatorów i czas końca. Odbieramy rekord podsumowania.</p>
+<p><strong>Krok 4.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>        std::cout &lt;&lt; &quot;Zapisano wyniki_fifo.txt i wyniki_fee.txt\n&quot;;
+        return 0;
+    } catch (const std::exception&amp; blad) {
+        std::cerr &lt;&lt; &quot;Blad: &quot; &lt;&lt; blad.what() &lt;&lt; &#x27;\n&#x27;;</pre>
+<p>Przez <code>cout &lt;&lt;</code> wypisujemy dane na ekran. Spacje rozdzielają wartości, a <code>\n</code> kończy wiersz; <code>cerr</code> służy do komunikatów o błędach. W main przez return 0 kończymy program i oznaczamy, że zakończył się poprawnie. Przez <code>const ...&amp;</code> korzystamy z istniejących danych bez kopiowania i bez ich zmieniania. Przechwytujemy błąd. Przez what() odczytujemy jego opis, wypisujemy go na cerr i kończymy program kodem 1.</p>
+<p><strong>Krok 5.</strong> Dopisujemy pod poprzednim fragmentem.</p>
+<pre>        return 1;
+    }
+}</pre>
+<p>Dopisujemy tę część do rozpoczętej wcześniej definicji. Wcięcia pokazują, które instrukcje należą do tego samego bloku.</p>
+<p><strong>Sprawdzamy przed dalszą pracą:</strong> liczymy otwarcia i zamknięcia klamer oraz porównujemy nazwy z instrukcją. Kompilujemy na najbliższym oznaczonym przystanku, po ukończeniu potrzebnych definicji.</p>
+<p><strong>Przystanek: statystyki.</strong> Kończymy podane definicje, zapisujemy pliki i kompilujemy w folderze z kodem.</p>
+<pre>g++ -std=c++17 -Wall -Wextra -pedantic main.cpp Walidator.cpp Symulator.cpp Statystyki.cpp Pliki.cpp -o symulator.exe
+.\symulator.exe</pre>
+<p><strong>Oczekiwany wynik:</strong> W obu plikach mamy średnią 2.00, maksimum 4, trzy terminowe, zero spóźnionych, czas końca 6 i wykorzystanie walidatora 1 równe 100.00. W README aktualizujemy kompilację: dochodzi Statystyki.cpp. Jeśli kompilator zgłasza błąd, poprawiamy pierwszy komunikat przed następnym krokiem.</p>
+<h3 id="5-2-sprawdzamy-wzory-na-ma-ych-danych">5.2. Sprawdzamy wzory na małych danych</h3>
+<p>Dla jednej transakcji <code>1 3 2 1 5</code> oczekujemy startu 3, końca 5, oczekiwania 0 i wykorzystania 40%. Dla deadline 4 ta sama transakcja ma opóźnienie 1. Przy samym <code>0</code> w zgloszenia.txt oczekujemy pustych rekordów i zerowych statystyk.</p>
+<ul>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-30" aria-checked="false" aria-label="Dla przykładu trzech transakcji sprawdzamy średnie oczekiwanie 2 i maksymalne 4.">☐</span> Dla przykładu trzech transakcji sprawdzamy średnie oczekiwanie 2 i maksymalne 4.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-31" aria-checked="false" aria-label="Dodajemy transakcję kończącą się w deadline i drugą kończącą się po nim.">☐</span> Dodajemy transakcję kończącą się w deadline i drugą kończącą się po nim.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-32" aria-checked="false" aria-label="Przy pustym wejściu przyjmujemy zerowe statystyki. Unikamy dzielenia przez zero.">☐</span> Przy pustym wejściu przyjmujemy zerowe statystyki. Unikamy dzielenia przez zero.</li>
+</ul>
+<p><strong>Sprawdzamy:</strong> wyniki programu zgadzają się z rachunkami zapisanymi w <code>oczekiwane_wyniki.txt</code>.</p>
+<h3 id="5-3-przygotowujemy-trzy-scenariusze">5.3. Przygotowujemy trzy scenariusze</h3>
+<ul>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-33" aria-checked="false" aria-label="`male_obciazenie.txt`: transakcje przychodzą rzadko, np. co 5 kroków, i trwają 2.">☐</span> <code>male_obciazenie.txt</code>: transakcje przychodzą rzadko, np. co 5 kroków, i trwają 2.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-34" aria-checked="false" aria-label="`przeciazenie.txt`: transakcje przychodzą szybciej, niż walidatorzy zdążą je kończyć, np. 3 nowe na krok przy 2 walidatorach i czasie wykonania 4.">☐</span> <code>przeciazenie.txt</code>: transakcje przychodzą szybciej, niż walidatorzy zdążą je kończyć, np. 3 nowe na krok przy 2 walidatorach i czasie wykonania 4.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-35" aria-checked="false" aria-label="`nagly_naplyw.txt`: np. 20 transakcji przychodzi w jednym kroku. W scenariuszach zmieniamy fee i terminy.">☐</span> <code>nagly_naplyw.txt</code>: np. 20 transakcji przychodzi w jednym kroku. W scenariuszach zmieniamy fee i terminy.</li>
+</ul>
+<p><strong>Wynik:</strong> trzy pliki testowe. W opisie podajemy liczbę transakcji i parametry, które wybraliśmy.</p>
+<h3 id="5-4-robimy-por-wnanie">5.4. Robimy porównanie</h3>
+<ul>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-36" aria-checked="false" aria-label="Dla każdego scenariusza uruchamiamy FIFO i FEE z ziarnami 11, 22 i 33. To 18 przebiegów.">☐</span> Dla każdego scenariusza uruchamiamy FIFO i FEE z ziarnami 11, 22 i 33. To 18 przebiegów.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-37" aria-checked="false" aria-label="Wpisujemy wyniki do `porownanie.csv`. Zapisujemy scenariusz, strategię, ziarno i mierzone wartości.">☐</span> Wpisujemy wyniki do <code>porownanie.csv</code>. Zapisujemy scenariusz, strategię, ziarno i mierzone wartości.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-38" aria-checked="false" aria-label="Robimy wykres średniego oczekiwania i wykres odsetka terminowych transakcji. Porównujemy też wykorzystanie walidatorów w tabeli.">☐</span> Robimy wykres średniego oczekiwania i wykres odsetka terminowych transakcji. Porównujemy też wykorzystanie walidatorów w tabeli.</li>
+</ul>
+<p><strong>Wynik:</strong> tabela i dwa wykresy. Jeśli wyniki między ziarnami się różnią, pokazujemy różnice.</p>
+<h3 id="5-5-piszemy-wnioski-i-sprawozdanie">5.5. Piszemy wnioski i sprawozdanie</h3>
+<ul>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-39" aria-checked="false" aria-label="Opisujemy cel, zasady, pliki, klasy i obie kolejki. Dodajemy diagramy z FigJam.">☐</span> Opisujemy cel, zasady, pliki, klasy i obie kolejki. Dodajemy diagramy z FigJam.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-40" aria-checked="false" aria-label="Dodajemy analizę złożoności, tabele i wykresy.">☐</span> Dodajemy analizę złożoności, tabele i wykresy.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-41" aria-checked="false" aria-label="Piszemy, kto czeka krócej w FEE, kto czeka dłużej i w których danych strategie dają podobne wyniki.">☐</span> Piszemy, kto czeka krócej w FEE, kto czeka dłużej i w których danych strategie dają podobne wyniki.</li>
+</ul>
+<p><strong>Na koniec etapu:</strong> <code>sprawozdanie.pdf</code>, pliki eksperymentów i wyniki, na których opieramy wnioski.</p>
+<p>Przy jednakowej szybkości wykonawców większy stake zmienia podział pracy. Nie zakładamy, że przyspieszy cały system. Dla skończonego wejścia obsługiwanego do końca mierzymy długie oczekiwanie; trwałe głodzenie rozważamy jako ryzyko przy ciągłym napływie.</p>
+<h2 id="etap-6-przygotowujemy-pokaz-i-oddanie-projektu">Etap 6. Przygotowujemy pokaz i oddanie projektu</h2>
+<p>Zadanie 6. Przewidujemy 3–5 godzin.</p>
+<h3 id="6-1-przygotowujemy-folder-do-oddania">6.1. Przygotowujemy folder do oddania</h3>
+<ul>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-42" aria-checked="false" aria-label="Umieszczamy w nim kod, dane testowe, `README.md` i `sprawozdanie.pdf`.">☐</span> Umieszczamy w nim kod, dane testowe, <code>README.md</code> i <code>sprawozdanie.pdf</code>.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-43" aria-checked="false" aria-label="Dopisujemy w README sposób kompilacji i uruchomienia.">☐</span> Dopisujemy w README sposób kompilacji i uruchomienia.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-44" aria-checked="false" aria-label="Uruchamiamy program z tego folderu.">☐</span> Uruchamiamy program z tego folderu.</li>
+</ul>
+<p><strong>Wynik:</strong> komplet plików, z którego prowadzący może uruchomić projekt.</p>
+<h3 id="6-2-uk-adamy-pokaz">6.2. Układamy pokaz</h3>
+<ul>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-45" aria-checked="false" aria-label="Zaczynamy od trzech transakcji pokazujących różną kolejność FIFO i FEE.">☐</span> Zaczynamy od trzech transakcji pokazujących różną kolejność FIFO i FEE.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-46" aria-checked="false" aria-label="Pokazujemy jeden większy scenariusz oraz jego wyniki.">☐</span> Pokazujemy jeden większy scenariusz oraz jego wyniki.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-47" aria-checked="false" aria-label="Zapisujemy kolejność pokazu w `pokaz.md`.">☐</span> Zapisujemy kolejność pokazu w <code>pokaz.md</code>.</li>
+</ul>
+<p><strong>Wynik:</strong> plan prezentacji, który możemy przećwiczyć.</p>
+<h3 id="6-3-wiczymy-wyja-nianie-kodu">6.3. Ćwiczymy wyjaśnianie kodu</h3>
+<ul>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-48" aria-checked="false" aria-label="Jedna osoba wyjaśnia kolejkę, druga czas i przydział.">☐</span> Jedna osoba wyjaśnia kolejkę, druga czas i przydział.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-49" aria-checked="false" aria-label="Zamieniamy się rolami.">☐</span> Zamieniamy się rolami.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-50" aria-checked="false" aria-label="Ćwiczymy pytania o stake, deadline, powtarzalność i złożoność.">☐</span> Ćwiczymy pytania o stake, deadline, powtarzalność i złożoność.</li>
+</ul>
+<p><strong>Sprawdzamy:</strong> oboje umiemy wyjaśnić części napisane przez drugą osobę.</p>
+<h3 id="6-4-sprawdzamy-wymagania-prowadz-cego">6.4. Sprawdzamy wymagania prowadzącego</h3>
+<ul>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-51" aria-checked="false" aria-label="Używamy tabeli pokrycia efektów poniżej.">☐</span> Używamy tabeli pokrycia efektów poniżej.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-52" aria-checked="false" aria-label="Przy każdej pozycji wskazujemy plik, wynik albo fragment pokazu.">☐</span> Przy każdej pozycji wskazujemy plik, wynik albo fragment pokazu.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-53" aria-checked="false" aria-label="Uzupełniamy brakujące elementy.">☐</span> Uzupełniamy brakujące elementy.</li>
+</ul>
+<p><strong>Wynik:</strong> sprawdzona lista wymagań w <code>opis_projektu.md</code>.</p>
+<h3 id="6-5-robimy-pr-b-prezentacji">6.5. Robimy próbę prezentacji</h3>
+<ul>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-54" aria-checked="false" aria-label="Przeprowadzamy pokaz od uruchomienia do wniosków.">☐</span> Przeprowadzamy pokaz od uruchomienia do wniosków.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-55" aria-checked="false" aria-label="Mierzymy czas. Jeśli prowadzący nie określił długości, przygotowujemy wersję 5–7 minut.">☐</span> Mierzymy czas. Jeśli prowadzący nie określił długości, przygotowujemy wersję 5–7 minut.</li>
+<li class="check-item"><span class="check-toggle" role="checkbox" tabindex="0" data-check="check-56" aria-checked="false" aria-label="Zapisujemy kopię folderu przed oddaniem.">☐</span> Zapisujemy kopię folderu przed oddaniem.</li>
+</ul>
+<p><strong>Na koniec etapu:</strong> komplet projektu i przećwiczony pokaz.</p>
+<h2 id="pliki-wej-ciowe-i-przyk-ad-kontrolny">Pliki wejściowe i przykład kontrolny</h2>
+<p>W plikach wejściowych używamy liczb oddzielonych spacjami. Opis kolumn trzymamy w dokumentacji.</p>
+<h3 id="konfiguracja-txt">konfiguracja.txt</h3>
+<p>Pierwszy wiersz: liczba walidatorów oraz ziarno losowania. Kolejne wiersze: ID i stake.</p>
+<pre>1 12345
+1 10</pre>
+<h3 id="zgloszenia-txt">zgloszenia.txt</h3>
+<p>Pierwszy wiersz: liczba transakcji. Kolejne: ID, nadejście, czas wykonania, fee, deadline.</p>
+<pre>3
+1 0 2 1 10
+2 0 2 9 10
+3 0 2 4 10</pre>
+<h3 id="wynik-z-kt-rym-por-wnujemy-program">Wynik, z którym porównujemy program</h3>
+<table>
+<tr><th>Strategia</th><th>Transakcja</th><th>Start</th><th>Koniec</th><th>Oczekiwanie</th></tr>
+<tr><td>FIFO</td><td>T1</td><td>0</td><td>2</td><td>0</td></tr>
+<tr><td>FIFO</td><td>T2</td><td>2</td><td>4</td><td>2</td></tr>
+<tr><td>FIFO</td><td>T3</td><td>4</td><td>6</td><td>4</td></tr>
+<tr><td>FEE</td><td>T2</td><td>0</td><td>2</td><td>0</td></tr>
+<tr><td>FEE</td><td>T3</td><td>2</td><td>4</td><td>2</td></tr>
+<tr><td>FEE</td><td>T1</td><td>4</td><td>6</td><td>4</td></tr>
+</table>
+<p>W obu wariantach średnie oczekiwanie wynosi 2, maksymalne 4, a wykorzystanie jedynego walidatora 100%. Te dane sprawdzają kolejność. Do oceny różnic potrzebujemy także scenariuszy z etapu 5.</p>
+<h3 id="dane-kt-re-odrzucamy">Dane, które odrzucamy</h3>
+<p>Odrzucamy brak pliku, błędny zapis liczby i liczbę rekordów niezgodną z pierwszym wierszem. Sprawdzamy też:</p>
+<ol>
+<li>Liczba walidatorów co najmniej 1; liczba transakcji co najmniej 0.</li>
+<li>ID są dodatnie i nie powtarzają się w obrębie transakcji ani w obrębie walidatorów.</li>
+<li>Stake i czas wykonania są większe od 0.</li>
+<li>Nadejście i fee są co najmniej 0.</li>
+<li>Deadline nie jest wcześniejszy niż nadejście. Może być wcześniejszy niż możliwe zakończenie zadania.</li>
+</ol>
+<h2 id="wzory-do-statystyk">Wzory do statystyk</h2>
+<table>
+<tr><th>Liczona wartość</th><th>Wzór</th></tr>
+<tr><td>Oczekiwanie</td><td>start − nadejście</td></tr>
+<tr><td>Opóźnienie</td><td>max(0, koniec − deadline)</td></tr>
+<tr><td>Terminowo</td><td>koniec &lt;= deadline</td></tr>
+<tr><td>Średnie oczekiwanie</td><td>suma oczekiwań / liczba transakcji</td></tr>
+<tr><td>Wykorzystanie walidatora</td><td>czas jego zajętości / czas od 0 do końca przebiegu × 100%</td></tr>
+</table>
+<p>W pliku wyników zapisujemy: ID transakcji, ID walidatora, nadejście, start, koniec, oczekiwanie, deadline, opóźnienie i terminowość. Dodajemy podsumowanie przebiegu. Dla pustego wejścia przyjmujemy wartości 0.</p>
+<h2 id="pokrycie-efekt-w-uczenia-si">Pokrycie efektów uczenia się</h2>
+<p>Sprawdzamy tę tabelę przed oddaniem. Przypisanie opiera się na macierzy zadań, którą podaliśmy.</p>
+<table>
+<tr><th>Efekt</th><th>Co przygotowujemy</th></tr>
+<tr><td>K_W05</td><td>Opis modelu, klasy C++, FIFO i FEE</td></tr>
+<tr><td>K_U05</td><td>Wyniki eksperymentów i ich omówienie</td></tr>
+<tr><td>K_U08</td><td>Uzasadnienie modelu, algorytmów i struktur danych</td></tr>
+<tr><td>K_U09</td><td>Opis czasu działania i pamięci w O()</td></tr>
+<tr><td>K_U15</td><td>Działający symulator i obie kolejki</td></tr>
+<tr><td>K_K09</td><td>Wyjaśnienie decyzji w opisie i na obronie</td></tr>
+<tr><td>K_K10</td><td>Sprawozdanie i prezentację wyników</td></tr>
+</table></main><script>function selectDocument(){const el=document.getElementById("document");const r=document.createRange();r.selectNodeContents(el);const s=window.getSelection();s.removeAllRanges();s.addRange(r);document.getElementById("status").innerText="Zaznaczono dokument. Naciskamy Ctrl+C, a potem Ctrl+V w Google Docs.";}const storageKey="pos-notatki-"+location.pathname;let saved={};try{saved=JSON.parse(localStorage.getItem(storageKey)||"{}");}catch(e){}document.querySelectorAll("[data-note]").forEach(el=>{if(Object.prototype.hasOwnProperty.call(saved,el.dataset.note))el.innerText=saved[el.dataset.note];el.addEventListener("focus",()=>{if(/^\.+$/.test(el.innerText.trim())){const r=document.createRange();r.selectNodeContents(el);const s=window.getSelection();s.removeAllRanges();s.addRange(r);}});el.addEventListener("input",()=>{saved[el.dataset.note]=el.innerText;try{localStorage.setItem(storageKey,JSON.stringify(saved));}catch(e){document.getElementById("status").innerText="Notatki są na stronie. Kopiujemy je do Google Docs, aby je zachować.";}});});document.querySelectorAll("[data-check]").forEach(el=>{const key=el.dataset.check;function render(value){el.setAttribute("aria-checked",String(value));el.innerText=value?"☑":"☐";}if(Object.prototype.hasOwnProperty.call(saved,key))render(saved[key]===true);function toggle(){const value=el.getAttribute("aria-checked")!=="true";render(value);saved[key]=value;try{localStorage.setItem(storageKey,JSON.stringify(saved));}catch(e){document.getElementById("status").innerText="Odhaczenia są na stronie. Kopiujemy je do Google Docs, aby je zachować.";}}el.addEventListener("click",toggle);el.addEventListener("keydown",e=>{if(e.key===" "||e.key==="Enter"){e.preventDefault();toggle();}});});</script></html>

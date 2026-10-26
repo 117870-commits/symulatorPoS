@@ -4,18 +4,12 @@
 #include "Walidator.hpp"
 #include <cstddef>
 #include <queue>
-#include <random>
 #include <vector>
-
-struct PorownajFee {
-    bool operator()(const Transakcja& a, const Transakcja& b) const;
-};
 
 class Symulator {
 public:
     Symulator(const Konfiguracja& konfiguracja,
-              const std::vector<Transakcja>& wejscie,
-              Strategia wybranaStrategia);
+              const std::vector<Transakcja>& wejscie);
     std::vector<WynikTransakcji> uruchom();
     long long pobierzCzasKonca() const;
 
@@ -25,8 +19,6 @@ private:
     std::vector<Walidator> walidatorzy;
     std::vector<WynikTransakcji> wyniki;
     std::queue<Transakcja> fifo;
-    std::priority_queue<Transakcja, std::vector<Transakcja>, PorownajFee> fee;
-    std::mt19937 generator;
     long long czas = 0;
     std::size_t nastepnaTransakcja = 0;
 

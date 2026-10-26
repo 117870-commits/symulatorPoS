@@ -1,8 +1,4 @@
-# Konfiguracja symulatora PoS
-# kolumny: seed validator_count
-seed=12345
-validator_count=1
-
-# kolumny: validator_id stake
-validator_id stake
-1 10
+3
+1 0 2 1 10
+2 0 2 9 10
+3 0 2 4 10
