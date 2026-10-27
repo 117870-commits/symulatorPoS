@@ -33,3 +33,13 @@ struct WynikTransakcji {
 };
 
 enum class Strategia { FIFO, FEE };
+
+struct Podsumowanie {
+    long long liczbaObsluzonych = 0;
+    double srednieOczekiwanie = 0;
+    long long maksymalneOczekiwanie = 0;
+    long long terminowe = 0;
+    long long spoznione = 0;
+    long long czasKonca = 0;
+    std::vector<double> wykorzystanie;
+};
