@@ -9,5 +9,7 @@ public:
     static Konfiguracja wczytajKonfiguracje(const std::string& nazwa);
     static std::vector<Transakcja> wczytajTransakcje(const std::string& nazwa);
     static void zapiszWyniki(const std::string& nazwa,
-                             const std::vector<WynikTransakcji>& wyniki);
+                            const std::vector<WynikTransakcji>& wyniki,
+                            const Podsumowanie& podsumowanie,
+                            const std::vector<DaneWalidatora>& walidatorzy);
 };
