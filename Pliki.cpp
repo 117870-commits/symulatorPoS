@@ -1,6 +1,7 @@
 #include "Pliki.hpp"
 #include <algorithm>
 #include <fstream>
+#include <iomanip>
 #include <limits>
 #include <map>
 #include <set>
@@ -99,7 +100,7 @@ std::vector<Transakcja> Pliki::wczytajTransakcje(const std::string& nazwa) {
     std::sort(wynik.begin(),wynik.end(),[](const auto& a,const auto& b){return a.nadejscie != b.nadejscie ? a.nadejscie < b.nadejscie : a.id < b.id;});
     return wynik;
 }
-void Pliki::zapiszWyniki(const std::string& nazwa, const std::vector<WynikTransakcji>& wyniki) {
+void Pliki::zapiszWyniki(const std::string& nazwa, const std::vector<WynikTransakcji>& wyniki, const Podsumowanie& podsumowanie, const std::vector<DaneWalidatora>& walidatorzy) {
     std::ofstream plik(nazwa);
     if (!plik) throw std::runtime_error("Nie mozna zapisac " + nazwa);
     plik << "# Wyniki w kolejnosci zakonczenia. Czas jest liczony w krokach.\n";
