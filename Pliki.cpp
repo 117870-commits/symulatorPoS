@@ -100,22 +100,23 @@ std::vector<Transakcja> Pliki::wczytajTransakcje(const std::string& nazwa) {
     std::sort(wynik.begin(),wynik.end(),[](const auto& a,const auto& b){return a.nadejscie != b.nadejscie ? a.nadejscie < b.nadejscie : a.id < b.id;});
     return wynik;
 }
-void Pliki::zapiszWyniki(const std::string& nazwa, const std::vector<WynikTransakcji>& wyniki, const Podsumowanie& podsumowanie, const std::vector<DaneWalidatora>& walidatorzy) {
-    std::ofstream plik(nazwa);
-    if (!plik) throw std::runtime_error("Nie mozna zapisac " + nazwa);
-    plik << "# Wyniki w kolejnosci zakonczenia. Czas jest liczony w krokach.\n";
-    for (const auto& w : wyniki) {
-        plik << "\n[wynik]\n"
-             << "id_transakcji = " << w.idTransakcji << '\n'
-             << "id_walidatora = " << w.idWalidatora << '\n'
-             << "nadejscie = " << w.nadejscie << '\n'
-             << "start = " << w.start << '\n'
-             << "koniec = " << w.koniec << '\n'
-             << "oczekiwanie = " << w.oczekiwanie << '\n'
-             << "deadline = " << w.deadline << '\n'
-             << "opoznienie = " << w.opoznienie << '\n'
-             << "terminowo = " << (w.terminowo ? "tak" : "nie") << '\n';
-    }
-    plik.flush();
-    if (!plik) throw std::runtime_error("Blad zapisu " + nazwa);
-}
+void Pliki::zapiszWyniki(const std::string& nazwa,const std::vector<WynikTransakcji>& wyniki, const Podsumowanie& podsumowanie,const std::vector<DaneWalidatora>& walidatorzy) 
+        {
+            std::ofstream plik(nazwa);
+            if (!plik) {throw std::runtime_error("Nie mozna zapisac " + nazwa);}
+            plik << "id_transakcji id_walidatora nadejscie start koniec " << "oczekiwanie deadline opoznienie terminowo\n";
+            for (const WynikTransakcji& wynik : wyniki) { plik << wynik.idTransakcji << ' ' << wynik.idWalidatora << ' ' << wynik.nadejscie << ' ' 
+                << wynik.start << ' ' << wynik.koniec << ' ' << wynik.oczekiwanie << ' ' << wynik.deadline << ' ' << wynik.opoznienie << ' ' 
+                << wynik.terminowo << '\n';}
+            plik << "\nPODSUMOWANIE\n";
+            plik << "liczba_obsluzonych " << podsumowanie.liczbaObsluzonych << '\n';
+            plik << std::fixed << std::setprecision(2);
+            plik << "srednie_oczekiwanie " << podsumowanie.srednieOczekiwanie << '\n';
+            plik << "maksymalne_oczekiwanie " << podsumowanie.maksymalneOczekiwanie << '\n';
+            plik << "terminowe " << podsumowanie.terminowe << '\n';
+            plik << "spoznione " << podsumowanie.spoznione << '\n';
+            plik << "czas_konca " << podsumowanie.czasKonca << '\n';
+            for (std::size_t i = 0; i < walidatorzy.size(); ++i) {plik << "wykorzystanie " << walidatorzy[i].id << ' '<< podsumowanie.wykorzystanie[i] << '\n';}
+            plik.flush();
+            if (!plik) {throw std::runtime_error("Blad zapisu " + nazwa);}
+        }
