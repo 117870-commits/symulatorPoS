@@ -15,15 +15,20 @@ std::vector<double> przygotujLosowania(std::size_t liczba, unsigned int ziarno) 
 int main() {
     try {
         Konfiguracja konfiguracja = Pliki::wczytajKonfiguracje("konfiguracja.txt");
-        auto transakcje = Pliki::wczytajTransakcje("zgloszenia.txt");
-        auto losowania = przygotujLosowania(transakcje.size(), konfiguracja.ziarno);
+        std::vector<Transakcja> transakcje = Pliki::wczytajTransakcje("zgloszenia.txt");
+        std::vector<double> losowania = przygotujLosowania(transakcje.size(), konfiguracja.ziarno);
         Symulator fifo(konfiguracja, transakcje, losowania, Strategia::FIFO);
+        std::vector<WynikTransakcji> wynikiFifo = fifo.uruchom();
+        Podsumowanie statystykiFifo = Statystyki::oblicz(wynikiFifo, konfiguracja.walidatorzy, fifo.pobierzCzasKonca());
+        Pliki::zapiszWyniki("wyniki_fifo.txt", wynikiFifo,statystykiFifo, konfiguracja.walidatorzy);
         Symulator fee(konfiguracja, transakcje, losowania, Strategia::FEE);
-        Pliki::zapiszWyniki("wyniki_fifo.txt", fifo.uruchom());
-        Pliki::zapiszWyniki("wyniki_fee.txt", fee.uruchom());
+        std::vector<WynikTransakcji> wynikiFee = fee.uruchom();
+        Podsumowanie statystykiFee = Statystyki::oblicz(wynikiFee, konfiguracja.walidatorzy, fee.pobierzCzasKonca());
+        Pliki::zapiszWyniki("wyniki_fee.txt", wynikiFee,statystykiFee, konfiguracja.walidatorzy);
         std::cout << "Zapisano wyniki_fifo.txt i wyniki_fee.txt\n";
         return 0;
-    } catch (const std::exception& blad) {
+    } 
+    catch (const std::exception& blad) {
         std::cerr << "Blad: " << blad.what() << '\n';
         return 1;
     }
