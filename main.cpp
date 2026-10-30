@@ -1,4 +1,5 @@
 #include "Pliki.hpp"
+#include "Statystyki.hpp"
 #include "Symulator.hpp"
 #include <exception>
 #include <iostream>
