@@ -1,0 +1,33 @@
+# Przyklad kontrolny: jeden walidator, trzy transakcje w czasie 0.
+# Kazda trwa 2 kroki, a termin wszystkich to 10.
+# Kolejnosc w FIFO: 1, 2, 3. Kolejnosc w FEE: 2, 3, 1.
+
+[FIFO: transakcja 1]
+start = 0
+koniec = 2
+oczekiwanie = 0
+[FIFO: transakcja 2]
+start = 2
+koniec = 4
+oczekiwanie = 2
+[FIFO: transakcja 3]
+start = 4
+koniec = 6
+oczekiwanie = 4
+
+[FEE: transakcja 2]
+start = 0
+koniec = 2
+oczekiwanie = 0
+[FEE: transakcja 3]
+start = 2
+koniec = 4
+oczekiwanie = 2
+[FEE: transakcja 1]
+start = 4
+koniec = 6
+oczekiwanie = 4
+
+# Wszystkie transakcje sa terminowe, koniec przebiegu = 6.
+# Srednie oczekiwanie = 2, maksymalne = 4, wykorzystanie = 100%.
+# Etap 5: powyzsze statystyki sa liczone automatycznie. Maly zestaw jest w przyklady/.

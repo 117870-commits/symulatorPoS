@@ -1,0 +1,1203 @@
+# Zestaw prezentacyjny: 300 walidatorow, stale stake 10..1000.
+[symulacja]
+ziarno = 11
+
+[walidator]
+id = 1
+stake = 47
+
+[walidator]
+id = 2
+stake = 84
+
+[walidator]
+id = 3
+stake = 121
+
+[walidator]
+id = 4
+stake = 158
+
+[walidator]
+id = 5
+stake = 195
+
+[walidator]
+id = 6
+stake = 232
+
+[walidator]
+id = 7
+stake = 269
+
+[walidator]
+id = 8
+stake = 306
+
+[walidator]
+id = 9
+stake = 343
+
+[walidator]
+id = 10
+stake = 380
+
+[walidator]
+id = 11
+stake = 417
+
+[walidator]
+id = 12
+stake = 454
+
+[walidator]
+id = 13
+stake = 491
+
+[walidator]
+id = 14
+stake = 528
+
+[walidator]
+id = 15
+stake = 565
+
+[walidator]
+id = 16
+stake = 602
+
+[walidator]
+id = 17
+stake = 639
+
+[walidator]
+id = 18
+stake = 676
+
+[walidator]
+id = 19
+stake = 713
+
+[walidator]
+id = 20
+stake = 750
+
+[walidator]
+id = 21
+stake = 787
+
+[walidator]
+id = 22
+stake = 824
+
+[walidator]
+id = 23
+stake = 861
+
+[walidator]
+id = 24
+stake = 898
+
+[walidator]
+id = 25
+stake = 935
+
+[walidator]
+id = 26
+stake = 972
+
+[walidator]
+id = 27
+stake = 18
+
+[walidator]
+id = 28
+stake = 55
+
+[walidator]
+id = 29
+stake = 92
+
+[walidator]
+id = 30
+stake = 129
+
+[walidator]
+id = 31
+stake = 166
+
+[walidator]
+id = 32
+stake = 203
+
+[walidator]
+id = 33
+stake = 240
+
+[walidator]
+id = 34
+stake = 277
+
+[walidator]
+id = 35
+stake = 314
+
+[walidator]
+id = 36
+stake = 351
+
+[walidator]
+id = 37
+stake = 388
+
+[walidator]
+id = 38
+stake = 425
+
+[walidator]
+id = 39
+stake = 462
+
+[walidator]
+id = 40
+stake = 499
+
+[walidator]
+id = 41
+stake = 536
+
+[walidator]
+id = 42
+stake = 573
+
+[walidator]
+id = 43
+stake = 610
+
+[walidator]
+id = 44
+stake = 647
+
+[walidator]
+id = 45
+stake = 684
+
+[walidator]
+id = 46
+stake = 721
+
+[walidator]
+id = 47
+stake = 758
+
+[walidator]
+id = 48
+stake = 795
+
+[walidator]
+id = 49
+stake = 832
+
+[walidator]
+id = 50
+stake = 869
+
+[walidator]
+id = 51
+stake = 906
+
+[walidator]
+id = 52
+stake = 943
+
+[walidator]
+id = 53
+stake = 980
+
+[walidator]
+id = 54
+stake = 26
+
+[walidator]
+id = 55
+stake = 63
+
+[walidator]
+id = 56
+stake = 100
+
+[walidator]
+id = 57
+stake = 137
+
+[walidator]
+id = 58
+stake = 174
+
+[walidator]
+id = 59
+stake = 211
+
+[walidator]
+id = 60
+stake = 248
+
+[walidator]
+id = 61
+stake = 285
+
+[walidator]
+id = 62
+stake = 322
+
+[walidator]
+id = 63
+stake = 359
+
+[walidator]
+id = 64
+stake = 396
+
+[walidator]
+id = 65
+stake = 433
+
+[walidator]
+id = 66
+stake = 470
+
+[walidator]
+id = 67
+stake = 507
+
+[walidator]
+id = 68
+stake = 544
+
+[walidator]
+id = 69
+stake = 581
+
+[walidator]
+id = 70
+stake = 618
+
+[walidator]
+id = 71
+stake = 655
+
+[walidator]
+id = 72
+stake = 692
+
+[walidator]
+id = 73
+stake = 729
+
+[walidator]
+id = 74
+stake = 766
+
+[walidator]
+id = 75
+stake = 803
+
+[walidator]
+id = 76
+stake = 840
+
+[walidator]
+id = 77
+stake = 877
+
+[walidator]
+id = 78
+stake = 914
+
+[walidator]
+id = 79
+stake = 951
+
+[walidator]
+id = 80
+stake = 988
+
+[walidator]
+id = 81
+stake = 34
+
+[walidator]
+id = 82
+stake = 71
+
+[walidator]
+id = 83
+stake = 108
+
+[walidator]
+id = 84
+stake = 145
+
+[walidator]
+id = 85
+stake = 182
+
+[walidator]
+id = 86
+stake = 219
+
+[walidator]
+id = 87
+stake = 256
+
+[walidator]
+id = 88
+stake = 293
+
+[walidator]
+id = 89
+stake = 330
+
+[walidator]
+id = 90
+stake = 367
+
+[walidator]
+id = 91
+stake = 404
+
+[walidator]
+id = 92
+stake = 441
+
+[walidator]
+id = 93
+stake = 478
+
+[walidator]
+id = 94
+stake = 515
+
+[walidator]
+id = 95
+stake = 552
+
+[walidator]
+id = 96
+stake = 589
+
+[walidator]
+id = 97
+stake = 626
+
+[walidator]
+id = 98
+stake = 663
+
+[walidator]
+id = 99
+stake = 700
+
+[walidator]
+id = 100
+stake = 737
+
+[walidator]
+id = 101
+stake = 774
+
+[walidator]
+id = 102
+stake = 811
+
+[walidator]
+id = 103
+stake = 848
+
+[walidator]
+id = 104
+stake = 885
+
+[walidator]
+id = 105
+stake = 922
+
+[walidator]
+id = 106
+stake = 959
+
+[walidator]
+id = 107
+stake = 996
+
+[walidator]
+id = 108
+stake = 42
+
+[walidator]
+id = 109
+stake = 79
+
+[walidator]
+id = 110
+stake = 116
+
+[walidator]
+id = 111
+stake = 153
+
+[walidator]
+id = 112
+stake = 190
+
+[walidator]
+id = 113
+stake = 227
+
+[walidator]
+id = 114
+stake = 264
+
+[walidator]
+id = 115
+stake = 301
+
+[walidator]
+id = 116
+stake = 338
+
+[walidator]
+id = 117
+stake = 375
+
+[walidator]
+id = 118
+stake = 412
+
+[walidator]
+id = 119
+stake = 449
+
+[walidator]
+id = 120
+stake = 486
+
+[walidator]
+id = 121
+stake = 523
+
+[walidator]
+id = 122
+stake = 560
+
+[walidator]
+id = 123
+stake = 597
+
+[walidator]
+id = 124
+stake = 634
+
+[walidator]
+id = 125
+stake = 671
+
+[walidator]
+id = 126
+stake = 708
+
+[walidator]
+id = 127
+stake = 745
+
+[walidator]
+id = 128
+stake = 782
+
+[walidator]
+id = 129
+stake = 819
+
+[walidator]
+id = 130
+stake = 856
+
+[walidator]
+id = 131
+stake = 893
+
+[walidator]
+id = 132
+stake = 930
+
+[walidator]
+id = 133
+stake = 967
+
+[walidator]
+id = 134
+stake = 13
+
+[walidator]
+id = 135
+stake = 50
+
+[walidator]
+id = 136
+stake = 87
+
+[walidator]
+id = 137
+stake = 124
+
+[walidator]
+id = 138
+stake = 161
+
+[walidator]
+id = 139
+stake = 198
+
+[walidator]
+id = 140
+stake = 235
+
+[walidator]
+id = 141
+stake = 272
+
+[walidator]
+id = 142
+stake = 309
+
+[walidator]
+id = 143
+stake = 346
+
+[walidator]
+id = 144
+stake = 383
+
+[walidator]
+id = 145
+stake = 420
+
+[walidator]
+id = 146
+stake = 457
+
+[walidator]
+id = 147
+stake = 494
+
+[walidator]
+id = 148
+stake = 531
+
+[walidator]
+id = 149
+stake = 568
+
+[walidator]
+id = 150
+stake = 605
+
+[walidator]
+id = 151
+stake = 642
+
+[walidator]
+id = 152
+stake = 679
+
+[walidator]
+id = 153
+stake = 716
+
+[walidator]
+id = 154
+stake = 753
+
+[walidator]
+id = 155
+stake = 790
+
+[walidator]
+id = 156
+stake = 827
+
+[walidator]
+id = 157
+stake = 864
+
+[walidator]
+id = 158
+stake = 901
+
+[walidator]
+id = 159
+stake = 938
+
+[walidator]
+id = 160
+stake = 975
+
+[walidator]
+id = 161
+stake = 21
+
+[walidator]
+id = 162
+stake = 58
+
+[walidator]
+id = 163
+stake = 95
+
+[walidator]
+id = 164
+stake = 132
+
+[walidator]
+id = 165
+stake = 169
+
+[walidator]
+id = 166
+stake = 206
+
+[walidator]
+id = 167
+stake = 243
+
+[walidator]
+id = 168
+stake = 280
+
+[walidator]
+id = 169
+stake = 317
+
+[walidator]
+id = 170
+stake = 354
+
+[walidator]
+id = 171
+stake = 391
+
+[walidator]
+id = 172
+stake = 428
+
+[walidator]
+id = 173
+stake = 465
+
+[walidator]
+id = 174
+stake = 502
+
+[walidator]
+id = 175
+stake = 539
+
+[walidator]
+id = 176
+stake = 576
+
+[walidator]
+id = 177
+stake = 613
+
+[walidator]
+id = 178
+stake = 650
+
+[walidator]
+id = 179
+stake = 687
+
+[walidator]
+id = 180
+stake = 724
+
+[walidator]
+id = 181
+stake = 761
+
+[walidator]
+id = 182
+stake = 798
+
+[walidator]
+id = 183
+stake = 835
+
+[walidator]
+id = 184
+stake = 872
+
+[walidator]
+id = 185
+stake = 909
+
+[walidator]
+id = 186
+stake = 946
+
+[walidator]
+id = 187
+stake = 983
+
+[walidator]
+id = 188
+stake = 29
+
+[walidator]
+id = 189
+stake = 66
+
+[walidator]
+id = 190
+stake = 103
+
+[walidator]
+id = 191
+stake = 140
+
+[walidator]
+id = 192
+stake = 177
+
+[walidator]
+id = 193
+stake = 214
+
+[walidator]
+id = 194
+stake = 251
+
+[walidator]
+id = 195
+stake = 288
+
+[walidator]
+id = 196
+stake = 325
+
+[walidator]
+id = 197
+stake = 362
+
+[walidator]
+id = 198
+stake = 399
+
+[walidator]
+id = 199
+stake = 436
+
+[walidator]
+id = 200
+stake = 473
+
+[walidator]
+id = 201
+stake = 510
+
+[walidator]
+id = 202
+stake = 547
+
+[walidator]
+id = 203
+stake = 584
+
+[walidator]
+id = 204
+stake = 621
+
+[walidator]
+id = 205
+stake = 658
+
+[walidator]
+id = 206
+stake = 695
+
+[walidator]
+id = 207
+stake = 732
+
+[walidator]
+id = 208
+stake = 769
+
+[walidator]
+id = 209
+stake = 806
+
+[walidator]
+id = 210
+stake = 843
+
+[walidator]
+id = 211
+stake = 880
+
+[walidator]
+id = 212
+stake = 917
+
+[walidator]
+id = 213
+stake = 954
+
+[walidator]
+id = 214
+stake = 991
+
+[walidator]
+id = 215
+stake = 37
+
+[walidator]
+id = 216
+stake = 74
+
+[walidator]
+id = 217
+stake = 111
+
+[walidator]
+id = 218
+stake = 148
+
+[walidator]
+id = 219
+stake = 185
+
+[walidator]
+id = 220
+stake = 222
+
+[walidator]
+id = 221
+stake = 259
+
+[walidator]
+id = 222
+stake = 296
+
+[walidator]
+id = 223
+stake = 333
+
+[walidator]
+id = 224
+stake = 370
+
+[walidator]
+id = 225
+stake = 407
+
+[walidator]
+id = 226
+stake = 444
+
+[walidator]
+id = 227
+stake = 481
+
+[walidator]
+id = 228
+stake = 518
+
+[walidator]
+id = 229
+stake = 555
+
+[walidator]
+id = 230
+stake = 592
+
+[walidator]
+id = 231
+stake = 629
+
+[walidator]
+id = 232
+stake = 666
+
+[walidator]
+id = 233
+stake = 703
+
+[walidator]
+id = 234
+stake = 740
+
+[walidator]
+id = 235
+stake = 777
+
+[walidator]
+id = 236
+stake = 814
+
+[walidator]
+id = 237
+stake = 851
+
+[walidator]
+id = 238
+stake = 888
+
+[walidator]
+id = 239
+stake = 925
+
+[walidator]
+id = 240
+stake = 962
+
+[walidator]
+id = 241
+stake = 999
+
+[walidator]
+id = 242
+stake = 45
+
+[walidator]
+id = 243
+stake = 82
+
+[walidator]
+id = 244
+stake = 119
+
+[walidator]
+id = 245
+stake = 156
+
+[walidator]
+id = 246
+stake = 193
+
+[walidator]
+id = 247
+stake = 230
+
+[walidator]
+id = 248
+stake = 267
+
+[walidator]
+id = 249
+stake = 304
+
+[walidator]
+id = 250
+stake = 341
+
+[walidator]
+id = 251
+stake = 378
+
+[walidator]
+id = 252
+stake = 415
+
+[walidator]
+id = 253
+stake = 452
+
+[walidator]
+id = 254
+stake = 489
+
+[walidator]
+id = 255
+stake = 526
+
+[walidator]
+id = 256
+stake = 563
+
+[walidator]
+id = 257
+stake = 600
+
+[walidator]
+id = 258
+stake = 637
+
+[walidator]
+id = 259
+stake = 674
+
+[walidator]
+id = 260
+stake = 711
+
+[walidator]
+id = 261
+stake = 748
+
+[walidator]
+id = 262
+stake = 785
+
+[walidator]
+id = 263
+stake = 822
+
+[walidator]
+id = 264
+stake = 859
+
+[walidator]
+id = 265
+stake = 896
+
+[walidator]
+id = 266
+stake = 933
+
+[walidator]
+id = 267
+stake = 970
+
+[walidator]
+id = 268
+stake = 16
+
+[walidator]
+id = 269
+stake = 53
+
+[walidator]
+id = 270
+stake = 90
+
+[walidator]
+id = 271
+stake = 127
+
+[walidator]
+id = 272
+stake = 164
+
+[walidator]
+id = 273
+stake = 201
+
+[walidator]
+id = 274
+stake = 238
+
+[walidator]
+id = 275
+stake = 275
+
+[walidator]
+id = 276
+stake = 312
+
+[walidator]
+id = 277
+stake = 349
+
+[walidator]
+id = 278
+stake = 386
+
+[walidator]
+id = 279
+stake = 423
+
+[walidator]
+id = 280
+stake = 460
+
+[walidator]
+id = 281
+stake = 497
+
+[walidator]
+id = 282
+stake = 534
+
+[walidator]
+id = 283
+stake = 571
+
+[walidator]
+id = 284
+stake = 608
+
+[walidator]
+id = 285
+stake = 645
+
+[walidator]
+id = 286
+stake = 682
+
+[walidator]
+id = 287
+stake = 719
+
+[walidator]
+id = 288
+stake = 756
+
+[walidator]
+id = 289
+stake = 793
+
+[walidator]
+id = 290
+stake = 830
+
+[walidator]
+id = 291
+stake = 867
+
+[walidator]
+id = 292
+stake = 904
+
+[walidator]
+id = 293
+stake = 941
+
+[walidator]
+id = 294
+stake = 978
+
+[walidator]
+id = 295
+stake = 24
+
+[walidator]
+id = 296
+stake = 61
+
+[walidator]
+id = 297
+stake = 98
+
+[walidator]
+id = 298
+stake = 135
+
+[walidator]
+id = 299
+stake = 172
+
+[walidator]
+id = 300
+stake = 209

@@ -1,0 +1,46 @@
+# Wyniki w kolejnosci zakonczenia. Czas w krokach symulacji.
+
+[wynik]
+id_transakcji = 2
+id_walidatora = 1
+nadejscie = 0
+start = 0
+koniec = 2
+oczekiwanie = 0
+deadline = 10
+opoznienie = 0
+terminowo = tak
+
+[wynik]
+id_transakcji = 3
+id_walidatora = 1
+nadejscie = 0
+start = 2
+koniec = 4
+oczekiwanie = 2
+deadline = 10
+opoznienie = 0
+terminowo = tak
+
+[wynik]
+id_transakcji = 1
+id_walidatora = 1
+nadejscie = 0
+start = 4
+koniec = 6
+oczekiwanie = 4
+deadline = 10
+opoznienie = 0
+terminowo = tak
+
+[podsumowanie]
+liczba_obsluzonych = 3
+srednie_oczekiwanie = 2.000000
+maksymalne_oczekiwanie = 4
+terminowe = 3
+spoznione = 0
+czas_konca = 6
+
+[wykorzystanie]
+id_walidatora = 1
+procent = 100.000000
